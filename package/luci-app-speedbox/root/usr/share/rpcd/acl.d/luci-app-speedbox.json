@@ -1,0 +1,9 @@
+{
+	"luci-app-speedbox": {
+		"description": "Grant access to Speedbox speed test",
+		"read": {
+			"uci": ["speedbox"]
+		},
+		"write": {}
+	}
+}

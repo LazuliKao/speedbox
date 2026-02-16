@@ -1,0 +1,24 @@
+{
+  "name": "speedbox-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "preact": "^10.25.0"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.9.0",
+    "jsdom": "^26.0.0",
+    "vite": "^6.0.0",
+    "vitest": "^3.0.0"
+  }
+}

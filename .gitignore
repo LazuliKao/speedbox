@@ -1,0 +1,31 @@
+# Rust
+target/
+**/*.rs.bk
+*.pdb
+Cargo.lock
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+desktop.ini
+ehthumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Misc
+*.bak
+*.tmp
+*.temp
+/.sisyphus
