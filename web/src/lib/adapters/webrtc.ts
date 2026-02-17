@@ -1,26 +1,3 @@
-/**
- * WebRTC Speed Test Adapter (P2P, LAN only).
- *
- * Architecture:
- *   - Two browsers connect via Speedbox signaling server (/ws/signal).
- *   - Host creates offer, Client answers.
- *   - Data is transferred over RTCDataChannel (UDP, unordered, unreliable for max throughput).
- *   - No TURN server — LAN only.
- *
- * Signaling Protocol (text over WebSocket):
- *   JOIN <room_id>  → join/create room
- *   SIGNAL <json>   → forward SDP/ICE to peer
- *   LEAVE           → leave room
- *   LIST            → get available rooms
- *
- * DataChannel Protocol:
- *   - Direction negotiated out-of-band (both sides know their role).
- *   - Download (from host's perspective): host sends, client receives.
- *   - Upload (from host's perspective): client sends, host receives.
- *   - "START" text message begins the transfer.
- *   - "STOP" text message ends it.
- */
-
 import {
   type SpeedTestAdapter,
   type SpeedTestConfig,
@@ -31,11 +8,28 @@ import {
   calcSpeedMbps,
 } from '../speedtest';
 
-export type WebRtcRole = 'host' | 'client';
+export type PairingState = 'disconnected' | 'lobby' | 'pair_requested' | 'pair_pending' | 'paired';
 
-export interface WebRtcOptions {
-  /** Room ID for signaling. */
-  roomId: string;
+export interface LobbyPeer {
+  id: string;
+  name: string;
+}
+
+export interface PairRequest {
+  fromId: string;
+  fromName: string;
+}
+
+export interface WebRtcEvents {
+  onPairingStateChange: (state: PairingState) => void;
+  onLobbyUpdate: (peers: LobbyPeer[]) => void;
+  onPairRequest: (request: PairRequest) => void;
+  onPaired: (partnerId: string) => void;
+  onUnpaired: () => void;
+  onPeerTestStart: (config: SpeedTestConfig & { initiatorDirection: TestDirection }) => void;
+  onPeerTestStop: () => void;
+  onPeerTestUpdate: (progress: { direction: TestDirection; speed: number; bytes: number; elapsed: number }) => void;
+  onError: (error: string) => void;
 }
 
 export class WebRtcAdapter implements SpeedTestAdapter {
@@ -44,164 +38,353 @@ export class WebRtcAdapter implements SpeedTestAdapter {
   private signalingWs: WebSocket | null = null;
   private peerConnection: RTCPeerConnection | null = null;
   private dataChannel: RTCDataChannel | null = null;
-  private role: WebRtcRole | null = null;
   private running = false;
   private stopResolve: (() => void) | null = null;
-  private options: WebRtcOptions;
-
-  constructor(options: WebRtcOptions) {
-    this.options = options;
-  }
-
-  async start(
-    direction: TestDirection,
-    config: SpeedTestConfig,
-    callbacks: SpeedTestCallbacks
-  ): Promise<void> {
-    this.running = true;
-    callbacks.onStateChange(
-      direction === 'download' ? 'downloading' : 'uploading'
-    );
-
-    try {
-      await this.connect();
-      await this.runTest(direction, config, callbacks);
-    } catch (err) {
-      callbacks.onError(`WebRTC: ${(err as Error).message}`);
-      callbacks.onStateChange('error');
+  
+  private events: WebRtcEvents;
+  private deviceId: string;
+  private deviceName: string;
+  private partnerId: string | null = null;
+  
+  // Internal state
+  private _peers: LobbyPeer[] = [];
+  
+  constructor(events: WebRtcEvents) {
+    this.events = events;
+    
+    // Load or generate device identity
+    let id = localStorage.getItem('speedbox_device_id');
+    if (!id) {
+      if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        id = crypto.randomUUID();
+      } else {
+        id = Math.random().toString(36).substring(2) + Date.now().toString(36);
+      }
+      localStorage.setItem('speedbox_device_id', id);
     }
-  }
+    this.deviceId = id;
 
-  stop(): void {
-    this.running = false;
-    if (this.stopResolve) {
-      this.stopResolve();
-      this.stopResolve = null;
+    let name = localStorage.getItem('speedbox_device_name');
+    if (!name) {
+      name = typeof navigator !== 'undefined' ? (navigator.platform || 'Unknown Device') : 'Unknown Device';
+      localStorage.setItem('speedbox_device_name', name);
     }
-    this.cleanup();
+    this.deviceName = name;
   }
-
-  destroy(): void {
-    this.stop();
+  
+  private setPairingState(state: PairingState) {
+    this.events.onPairingStateChange(state);
   }
 
   // -------------------------------------------------------------------------
-  // Signaling
+  // Lifecycle & Pairing
   // -------------------------------------------------------------------------
 
-  private connect(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const url = `${wsBase()}/ws/signal`;
-      const ws = new WebSocket(url);
-      this.signalingWs = ws;
+  connect(): void {
+    if (this.signalingWs) return;
 
-      ws.onopen = () => {
-        ws.send(`JOIN ${this.options.roomId}`);
-      };
+    const url = `${wsBase()}/ws/signal`;
+    const ws = new WebSocket(url);
+    this.signalingWs = ws;
 
-      ws.onmessage = (e) => {
-        const msg = e.data as string;
+    ws.onopen = () => {
+      this.sendJson('HELLO', { name: this.deviceName, id: this.deviceId });
+    };
 
-        if (msg.startsWith('JOINED ')) {
-          this.role = msg.split(' ')[1] as WebRtcRole;
-          this.setupPeerConnection(resolve, reject);
-        } else if (msg.startsWith('PEER_JOINED')) {
-          // Host: peer arrived, create offer
-          if (this.role === 'host') {
-            this.createOffer();
-          }
-        } else if (msg.startsWith('SIGNAL ')) {
-          const payload = msg.slice(7);
-          this.handleSignal(payload, resolve);
-        } else if (msg.startsWith('ERROR ')) {
-          reject(new Error(msg.slice(6)));
+    ws.onmessage = (e) => {
+      this.handleMessage(e.data as string);
+    };
+
+    ws.onclose = () => {
+      this.signalingWs = null;
+      this.cleanupPeerConnection();
+      this.setPairingState('disconnected');
+    };
+
+    ws.onerror = () => {
+      this.events.onError('Signaling connection error');
+    };
+  }
+
+  disconnect(): void {
+    this.cleanupPeerConnection();
+    if (this.signalingWs) {
+      this.signalingWs.close();
+      this.signalingWs = null;
+    }
+    this.setPairingState('disconnected');
+  }
+
+  requestPair(targetId: string): void {
+    this.send('PAIR_REQUEST', targetId);
+    this.setPairingState('pair_pending');
+  }
+
+  acceptPair(requesterId: string): void {
+    this.send('PAIR_ACCEPT', requesterId);
+  }
+
+  rejectPair(requesterId: string): void {
+    this.send('PAIR_REJECT', requesterId);
+  }
+
+  unpair(): void {
+    this.send('UNPAIR');
+    this.cleanupPeerConnection();
+    this.partnerId = null;
+    this.setPairingState('lobby');
+    this.events.onUnpaired();
+  }
+
+  private send(cmd: string, payload: string = ''): void {
+    if (this.signalingWs?.readyState === WebSocket.OPEN) {
+      this.signalingWs.send(payload ? `${cmd} ${payload}` : cmd);
+    }
+  }
+
+  private sendJson(cmd: string, data: object): void {
+    this.send(cmd, JSON.stringify(data));
+  }
+
+  private handleMessage(msg: string): void {
+    const spaceIdx = msg.indexOf(' ');
+    const cmd = spaceIdx === -1 ? msg : msg.slice(0, spaceIdx);
+    const payload = spaceIdx === -1 ? '' : msg.slice(spaceIdx + 1);
+
+    switch (cmd) {
+      case 'HELLO_OK':
+        this.setPairingState('lobby');
+        break;
+      
+      case 'LOBBY':
+        try {
+          const peers = JSON.parse(payload) as LobbyPeer[];
+          this._peers = peers;
+          this.events.onLobbyUpdate(peers);
+        } catch (e) { console.error('Invalid LOBBY payload', e); }
+        break;
+        
+      case 'PEER_JOINED':
+        this.handlePeerJoined(payload);
+        break;
+        
+      case 'PEER_LEFT':
+        this.handlePeerLeft(payload);
+        break;
+        
+      case 'PAIR_REQUEST':
+        const firstSpace = payload.indexOf(' ');
+        if (firstSpace !== -1) {
+          const fromId = payload.slice(0, firstSpace);
+          const fromName = payload.slice(firstSpace + 1);
+          this.events.onPairRequest({ fromId, fromName });
+          this.setPairingState('pair_requested');
         }
-      };
-
-      ws.onerror = () => reject(new Error('signaling connection failed'));
-      ws.onclose = () => {
-        // Expected on cleanup
-      };
-    });
+        break;
+        
+      case 'PAIRED':
+        this.partnerId = payload;
+        this.setPairingState('paired');
+        this.events.onPaired(payload);
+        this.setupPeerConnection();
+        break;
+        
+      case 'PAIR_REJECTED':
+        this.setPairingState('lobby');
+        this.events.onError(`Pairing rejected: ${payload}`);
+        break;
+        
+      case 'UNPAIRED':
+        this.cleanupPeerConnection();
+        this.partnerId = null;
+        this.setPairingState('lobby');
+        this.events.onUnpaired();
+        break;
+        
+      case 'SIGNAL':
+        const sigSpace = payload.indexOf(' ');
+        if (sigSpace !== -1) {
+          const json = payload.slice(sigSpace + 1);
+          this.handleSignal(json);
+        }
+        break;
+        
+      case 'PING':
+        this.send('PONG');
+        break;
+        
+      case 'TEST_START':
+        try {
+          const data = JSON.parse(payload);
+          if (data.initiatorDirection) {
+            this.events.onPeerTestStart(data);
+          }
+        } catch (e) { console.error('Invalid TEST_START', e); }
+        break;
+        
+      case 'TEST_STOP':
+        this.events.onPeerTestStop();
+        break;
+        
+      case 'TEST_UPDATE':
+        try {
+          this.events.onPeerTestUpdate(JSON.parse(payload));
+        } catch (e) { }
+        break;
+    }
   }
 
-  private setupPeerConnection(
-    resolve: () => void,
-    _reject: (err: Error) => void
-  ): void {
-    const pc = new RTCPeerConnection({
-      iceServers: [], // LAN only, no STUN/TURN
-    });
+  // Lobby management helpers
+  
+  private handlePeerJoined(json: string) {
+    try {
+      const peer = JSON.parse(json) as LobbyPeer;
+      if (!this._peers.find(p => p.id === peer.id)) {
+        this._peers.push(peer);
+        this.events.onLobbyUpdate([...this._peers]);
+      }
+    } catch (e) {}
+  }
+
+  private handlePeerLeft(uuid: string) {
+    this._peers = this._peers.filter(p => p.id !== uuid);
+    this.events.onLobbyUpdate([...this._peers]);
+  }
+
+  // -------------------------------------------------------------------------
+  // WebRTC Setup
+  // -------------------------------------------------------------------------
+
+  private async setupPeerConnection(): Promise<void> {
+    if (!this.partnerId) return;
+
+    const pc = new RTCPeerConnection({ iceServers: [] });
     this.peerConnection = pc;
 
     pc.onicecandidate = (e) => {
-      if (e.candidate) {
-        this.sendSignal({
+      if (e.candidate && this.partnerId) {
+        this.sendSignal(this.partnerId!, {
           type: 'candidate',
           candidate: e.candidate.toJSON(),
         });
       }
     };
 
-    if (this.role === 'host') {
-      // Host creates the data channel
+    // Determine who creates the offer: alphabetically lower UUID
+    const isOfferer = this.deviceId < this.partnerId;
+
+    if (isOfferer) {
       const dc = pc.createDataChannel('speedtest', {
         ordered: false,
-        maxRetransmits: 0, // Unreliable for max throughput
+        maxRetransmits: 0,
       });
       dc.binaryType = 'arraybuffer';
-      this.dataChannel = dc;
-
-      dc.onopen = () => resolve();
+      this.setupDataChannel(dc);
+      
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      this.sendSignal(this.partnerId, { type: 'offer', sdp: offer.sdp });
     } else {
-      // Client waits for the data channel
       pc.ondatachannel = (e) => {
-        const dc = e.channel;
-        dc.binaryType = 'arraybuffer';
-        this.dataChannel = dc;
-        dc.onopen = () => resolve();
+        this.setupDataChannel(e.channel);
       };
     }
   }
 
-  private async createOffer(): Promise<void> {
-    const pc = this.peerConnection!;
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    this.sendSignal({ type: 'offer', sdp: offer.sdp });
+  private setupDataChannel(dc: RTCDataChannel) {
+    this.dataChannel = dc;
+    dc.binaryType = 'arraybuffer';
+    dc.onopen = () => {
+      // Ready
+    };
+    dc.onclose = () => {
+      // Channel closed
+    };
   }
 
-  private async handleSignal(
-    payload: string,
-    resolve: () => void
-  ): Promise<void> {
-    const pc = this.peerConnection!;
-    let data: any;
+  private async handleSignal(json: string) {
+    if (!this.peerConnection) return;
+    
     try {
-      data = JSON.parse(payload);
-    } catch {
-      return;
-    }
+      const data = JSON.parse(json);
+      const pc = this.peerConnection;
 
-    if (data.type === 'offer') {
-      await pc.setRemoteDescription({ type: 'offer', sdp: data.sdp });
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      this.sendSignal({ type: 'answer', sdp: answer.sdp });
-    } else if (data.type === 'answer') {
-      await pc.setRemoteDescription({ type: 'answer', sdp: data.sdp });
-    } else if (data.type === 'candidate') {
-      await pc.addIceCandidate(data.candidate);
+      if (data.type === 'offer') {
+        await pc.setRemoteDescription({ type: 'offer', sdp: data.sdp });
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        if (this.partnerId) {
+          this.sendSignal(this.partnerId, { type: 'answer', sdp: answer.sdp });
+        }
+      } else if (data.type === 'answer') {
+        await pc.setRemoteDescription({ type: 'answer', sdp: data.sdp });
+      } else if (data.type === 'candidate') {
+        await pc.addIceCandidate(data.candidate);
+      }
+    } catch (e) {
+      console.error('Signal error', e);
     }
-
-    // resolve is called when DataChannel opens, not here
-    void resolve;
   }
 
-  private sendSignal(data: object): void {
-    if (this.signalingWs?.readyState === WebSocket.OPEN) {
-      this.signalingWs.send(`SIGNAL ${JSON.stringify(data)}`);
+  private sendSignal(targetId: string, data: object) {
+    this.send('SIGNAL', `${targetId} ${JSON.stringify(data)}`);
+  }
+
+  private cleanupPeerConnection() {
+    if (this.dataChannel) {
+      this.dataChannel.close();
+      this.dataChannel = null;
     }
+    if (this.peerConnection) {
+      this.peerConnection.close();
+      this.peerConnection = null;
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // SpeedTestAdapter Interface
+  // -------------------------------------------------------------------------
+
+  async start(
+    direction: TestDirection,
+    config: SpeedTestConfig,
+    callbacks: SpeedTestCallbacks
+  ): Promise<void> {
+    this.sendTestStart(config, direction);
+    await this.runTest(direction, config, callbacks);
+  }
+  
+  async startRemote(
+    direction: TestDirection,
+    config: SpeedTestConfig,
+    callbacks: SpeedTestCallbacks
+  ): Promise<void> {
+    await this.runTest(direction, config, callbacks);
+  }
+
+  stop(): void {
+    this.running = false;
+    this.sendTestStop();
+    if (this.stopResolve) {
+      this.stopResolve();
+      this.stopResolve = null;
+    }
+  }
+
+  destroy(): void {
+    this.disconnect();
+  }
+
+  sendTestStart(config: SpeedTestConfig, direction: TestDirection) {
+    this.sendJson('TEST_START', { ...config, initiatorDirection: direction });
+  }
+
+  sendTestStop() {
+    this.send('TEST_STOP');
+  }
+
+  sendTestUpdate(progress: any) {
+    this.sendJson('TEST_UPDATE', progress);
   }
 
   // -------------------------------------------------------------------------
@@ -213,21 +396,31 @@ export class WebRtcAdapter implements SpeedTestAdapter {
     config: SpeedTestConfig,
     callbacks: SpeedTestCallbacks
   ): Promise<void> {
-    const dc = this.dataChannel!;
-    // P2P requires opposite roles: when both click same button, one sends, one receives.
-    const isSender =
-      (direction === 'upload' && this.role === 'host') ||
-      (direction === 'download' && this.role === 'client');
+    if (!this.dataChannel || this.dataChannel.readyState !== 'open') {
+      callbacks.onError('Data channel not open');
+      return;
+    }
 
-    const isContinuous = config.mode === 'continuous';
+    this.running = true;
+    callbacks.onStateChange(
+      direction === 'download' ? 'downloading' : 'uploading'
+    );
 
-    do {
+    const isSender = direction === 'upload';
+
+    try {
       if (isSender) {
-        await this.sendData(dc, config, direction, callbacks);
+        await this.sendData(this.dataChannel, config, direction, callbacks);
       } else {
-        await this.receiveData(dc, config, direction, callbacks);
+        await this.receiveData(this.dataChannel, config, direction, callbacks);
       }
-    } while (isContinuous && this.running);
+      callbacks.onStateChange('done');
+    } catch (e) {
+      callbacks.onError((e as Error).message);
+      callbacks.onStateChange('error');
+    } finally {
+      this.running = false;
+    }
   }
 
   private sendData(
@@ -240,8 +433,8 @@ export class WebRtcAdapter implements SpeedTestAdapter {
       const payload = randomPayload(config.packetSize);
       let totalBytes = 0;
       const t0 = performance.now();
+      let lastUpdate = 0;
 
-      // Auto-stop after duration (single mode)
       let timer: ReturnType<typeof setTimeout> | null = null;
       if (config.mode === 'single') {
         timer = setTimeout(() => {
@@ -252,23 +445,17 @@ export class WebRtcAdapter implements SpeedTestAdapter {
 
       this.stopResolve = () => {
         if (timer) clearTimeout(timer);
-        try {
-          dc.send('STOP');
-        } catch {
-          // channel may be closed
-        }
+        try { dc.send('STOP'); } catch {}
         resolve();
       };
 
       dc.send('START');
 
       const sendLoop = () => {
-        if (!this.running && config.mode === 'continuous') {
-          resolve();
-          return;
+        if (!this.running) {
+           return;
         }
 
-        // Backpressure: respect bufferedAmount
         while (
           dc.readyState === 'open' &&
           dc.bufferedAmount < config.packetSize * 8
@@ -276,12 +463,20 @@ export class WebRtcAdapter implements SpeedTestAdapter {
           dc.send(payload as any);
           totalBytes += payload.byteLength;
 
-          const elapsed = (performance.now() - t0) / 1000;
-          callbacks.onProgress(direction, {
+          const now = performance.now();
+          const elapsed = (now - t0) / 1000;
+          const progress = {
             totalBytes,
             elapsed,
             speedMbps: calcSpeedMbps(totalBytes, elapsed),
-          });
+          };
+          
+          callbacks.onProgress(direction, progress);
+
+          if (now - lastUpdate > 500) {
+            this.sendTestUpdate({ ...progress, direction });
+            lastUpdate = now;
+          }
         }
 
         if (dc.readyState === 'open') {
@@ -305,12 +500,13 @@ export class WebRtcAdapter implements SpeedTestAdapter {
       let totalBytes = 0;
       let t0 = 0;
       let started = false;
+      let lastUpdate = 0;
 
       let timer: ReturnType<typeof setTimeout> | null = null;
       if (config.mode === 'single') {
         timer = setTimeout(() => {
           resolve();
-        }, config.duration * 1000);
+        }, (config.duration + 2) * 1000);
       }
 
       this.stopResolve = () => {
@@ -323,6 +519,7 @@ export class WebRtcAdapter implements SpeedTestAdapter {
           if (e.data === 'START') {
             started = true;
             t0 = performance.now();
+            totalBytes = 0;
           } else if (e.data === 'STOP') {
             if (timer) clearTimeout(timer);
             resolve();
@@ -333,84 +530,21 @@ export class WebRtcAdapter implements SpeedTestAdapter {
         if (!started) return;
 
         totalBytes += (e.data as ArrayBuffer).byteLength;
-        const elapsed = (performance.now() - t0) / 1000;
-        callbacks.onProgress(direction, {
+        const now = performance.now();
+        const elapsed = (now - t0) / 1000;
+        const progress = {
           totalBytes,
           elapsed,
           speedMbps: calcSpeedMbps(totalBytes, elapsed),
-        });
-      };
-    });
-  }
-
-  // -------------------------------------------------------------------------
-  // Cleanup
-  // -------------------------------------------------------------------------
-
-  private cleanup(): void {
-    if (this.dataChannel) {
-      try {
-        this.dataChannel.close();
-      } catch {
-        // ignore
-      }
-      this.dataChannel = null;
-    }
-
-    if (this.peerConnection) {
-      this.peerConnection.close();
-      this.peerConnection = null;
-    }
-
-    if (this.signalingWs) {
-      try {
-        this.signalingWs.send('LEAVE');
-        this.signalingWs.close();
-      } catch {
-        // ignore
-      }
-      this.signalingWs = null;
-    }
-
-    this.role = null;
-  }
-
-  // -------------------------------------------------------------------------
-  // Static helpers for room management
-  // -------------------------------------------------------------------------
-
-  /** List available rooms from the signaling server. */
-  static listRooms(): Promise<string[]> {
-    return new Promise((resolve, reject) => {
-      const url = `${wsBase()}/ws/signal`;
-      const ws = new WebSocket(url);
-
-      ws.onopen = () => {
-        ws.send('LIST');
-      };
-
-      ws.onmessage = (e) => {
-        const msg = e.data as string;
-        if (msg.startsWith('ROOMS ')) {
-          try {
-            const rooms = JSON.parse(msg.slice(6)) as string[];
-            resolve(rooms);
-          } catch {
-            resolve([]);
-          }
+        };
+        
+        callbacks.onProgress(direction, progress);
+        
+        if (now - lastUpdate > 500) {
+          this.sendTestUpdate({ ...progress, direction });
+          lastUpdate = now;
         }
-        ws.close();
       };
-
-      ws.onerror = () => {
-        reject(new Error('failed to list rooms'));
-        ws.close();
-      };
-
-      setTimeout(() => {
-        ws.close();
-        resolve([]);
-      }, 3000);
     });
   }
 }

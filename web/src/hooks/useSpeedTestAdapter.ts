@@ -2,7 +2,6 @@ import { useState, useRef, useCallback, useEffect } from 'preact/hooks';
 import {
   HttpAdapter,
   WebSocketAdapter,
-  WebRtcAdapter,
   type SpeedTestAdapter,
   type SpeedTestConfig,
   type TestState,
@@ -40,8 +39,7 @@ export function useSpeedTestAdapter() {
   const run = useCallback(async (
     protocol: Protocol,
     direction: TestDirection,
-    config: SpeedTestConfig,
-    roomId?: string
+    config: SpeedTestConfig
   ) => {
     if (adapterRef.current) {
       adapterRef.current.destroy();
@@ -57,8 +55,7 @@ export function useSpeedTestAdapter() {
         case 'ws':
           return new WebSocketAdapter();
         case 'webrtc':
-          if (!roomId) throw new Error('Room ID required for WebRTC');
-          return new WebRtcAdapter({ roomId });
+          throw new Error('WebRTC uses useWebRtcPairing hook, not useSpeedTestAdapter');
         default:
           throw new Error(`Unknown protocol: ${protocol}`);
       }

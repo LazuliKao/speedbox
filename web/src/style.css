@@ -303,3 +303,164 @@ button {
   flex-wrap: wrap;
   gap: 0.4rem;
 }
+
+/* Pairing Panel */
+.pairing-panel {
+  margin-top: 1rem;
+  padding: 1.5rem;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  background: #fdfdfd;
+}
+
+.pairing-panel--disconnected {
+  text-align: center;
+}
+
+.pairing-panel--paired {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-color: #4caf50;
+  background: #f1f8e9;
+}
+
+.paired-status {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.paired-icon {
+  width: 24px;
+  height: 24px;
+  background: #4caf50;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+.paired-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.paired-label {
+  font-size: 0.75rem;
+  color: #666;
+}
+
+.paired-name {
+  font-weight: 600;
+  color: #2e7d32;
+}
+
+.pairing-panel--pending {
+  text-align: center;
+  padding: 2rem;
+}
+
+/* Lobby */
+.lobby-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.lobby-header h3 {
+  font-size: 1rem;
+  margin: 0;
+  color: #555;
+}
+
+.lobby-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 100px;
+}
+
+.lobby-peer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  transition: border-color 0.2s;
+}
+
+.lobby-peer:hover {
+  border-color: #2196f3;
+}
+
+.peer-name {
+  font-weight: 500;
+}
+
+.lobby-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #888;
+  height: 120px;
+  gap: 0.5rem;
+}
+
+/* Modal / Overlay */
+.pair-request-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+.pair-request-content {
+  background: #fff;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  text-align: center;
+  max-width: 90%;
+  width: 400px;
+  animation: slideUp 0.2s ease;
+}
+
+.pair-request-content h4 {
+  margin-bottom: 0.5rem;
+  color: #2196f3;
+}
+
+.pair-request-content p {
+  margin-bottom: 1.5rem;
+}
+
+.pair-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
