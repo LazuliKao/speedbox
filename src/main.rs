@@ -3,26 +3,22 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use bytes::Bytes;
-use http_body_util::{BodyExt, Empty, Full, StreamBody};
+use http_body_util::combinators::BoxBody;
+#[cfg(any(feature = "ws", feature = "webrtc"))]
+use http_body_util::{BodyExt, Full};
 use hyper::body::Incoming;
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
-use hyper::{Method, Request, Response, StatusCode};
+use hyper::Request;
+#[cfg(any(feature = "ws", feature = "webrtc"))]
+use hyper::StatusCode;
+use hyper::Response;
 use hyper_util::rt::TokioIo;
 use tokio::net::TcpListener;
 
 mod config;
 mod data;
-
-type BoxBody = http_body_util::combinators::BoxBody<Bytes, Infallible>;
-
-fn full(data: impl Into<Bytes>) -> BoxBody {
-    Full::new(data.into()).boxed()
-}
-
-fn empty() -> BoxBody {
-    Empty::new().boxed()
-}
+mod protocol;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -41,74 +37,54 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         tokio::task::spawn(async move {
             let service = service_fn(move |req| {
                 let buffer = buffer.clone();
-                handle(req, buffer)
+                route(req, buffer)
             });
-            if let Err(e) = http1::Builder::new()
-                .serve_connection(io, service)
-                .await
-            {
+
+            let conn = http1::Builder::new().serve_connection(io, service);
+
+            #[cfg(feature = "ws")]
+            let conn = conn.with_upgrades();
+
+            if let Err(e) = conn.await {
                 eprintln!("connection error: {e}");
             }
         });
     }
 }
 
-async fn handle(
+async fn route(
     req: Request<Incoming>,
     buffer: Arc<Vec<u8>>,
-) -> Result<Response<BoxBody>, Infallible> {
-    let mut resp = match (req.method(), req.uri().path()) {
-        (&Method::GET, "/info") => Response::new(full("speedbox 0.1.0")),
+) -> Result<Response<BoxBody<Bytes, Infallible>>, Infallible> {
+    #[allow(unused_variables)]
+    let path = req.uri().path().to_owned();
 
-        (&Method::GET, "/download") => {
-            let stream = data::DownloadStream::new(buffer);
-            let body = StreamBody::new(stream).boxed();
-            let mut r = Response::new(body);
-            r.headers_mut().insert(
-                hyper::header::CONTENT_TYPE,
-                "application/octet-stream".parse().unwrap(),
-            );
-            r.headers_mut()
-                .insert("cache-control", "no-store".parse().unwrap());
-            r
-        }
-
-        (&Method::POST, "/upload") => {
-            let mut body = req.into_body();
-            let mut total: u64 = 0;
-            while let Some(frame) = body.frame().await {
-                match frame {
-                    Ok(f) => {
-                        if let Some(chunk) = f.data_ref() {
-                            total += chunk.len() as u64;
-                        }
-                    }
-                    Err(_) => break,
-                }
+    #[cfg(feature = "ws")]
+    if path == "/ws/speed" {
+        return match protocol::ws::handle_ws_speed(req, buffer).await {
+            Ok(resp) => Ok(resp.map(|b| b.boxed())),
+            Err(e) => {
+                eprintln!("ws upgrade error: {e}");
+                let mut r = Response::new(Full::new(Bytes::from("ws upgrade failed")).boxed());
+                *r.status_mut() = StatusCode::BAD_REQUEST;
+                Ok(r)
             }
-            Response::new(full(format!("received={total}")))
-        }
+        };
+    }
 
-        (&Method::OPTIONS, _) => Response::new(empty()),
+    #[cfg(feature = "webrtc")]
+    if path == "/ws/signal" {
+        return match protocol::signaling::handle_signaling(req).await {
+            Ok(resp) => Ok(resp.map(|b| b.boxed())),
+            Err(e) => {
+                eprintln!("signaling upgrade error: {e}");
+                let mut r =
+                    Response::new(Full::new(Bytes::from("signaling upgrade failed")).boxed());
+                *r.status_mut() = StatusCode::BAD_REQUEST;
+                Ok(r)
+            }
+        };
+    }
 
-        _ => {
-            let mut r = Response::new(full("not found"));
-            *r.status_mut() = StatusCode::NOT_FOUND;
-            r
-        }
-    };
-
-    // CORS headers on every response
-    let h = resp.headers_mut();
-    h.insert("access-control-allow-origin", "*".parse().unwrap());
-    h.insert(
-        "access-control-allow-methods",
-        "GET, POST, OPTIONS".parse().unwrap(),
-    );
-    h.insert(
-        "access-control-allow-headers",
-        "content-type".parse().unwrap(),
-    );
-
-    Ok(resp)
+    protocol::http::handle(req, buffer).await
 }

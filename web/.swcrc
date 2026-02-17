@@ -1,0 +1,24 @@
+{
+  "$schema": "https://swc.rs/schema.json",
+  "jsc": {
+    "parser": {
+      "syntax": "typescript",
+      "tsx": true,
+      "decorators": false,
+      "dynamicImport": true
+    },
+    "transform": {
+      "react": {
+        "runtime": "automatic",
+        "importSource": "preact"
+      }
+    },
+    "target": "es2020",
+    "loose": false,
+    "externalHelpers": false
+  },
+  "module": {
+    "type": "es6"
+  },
+  "sourceMaps": true
+}

@@ -123,3 +123,117 @@ button {
 .gauge--active {
   filter: drop-shadow(0 0 4px rgba(33, 150, 243, 0.35));
 }
+
+/* Wave 3 UI Additions */
+
+.protocol-selector-container {
+  margin-bottom: 1rem;
+}
+
+.protocol-selector {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+}
+
+.protocol-tab {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ccc;
+  background: #f5f5f5;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.protocol-tab--active {
+  background: #2196f3;
+  color: white;
+  border-color: #1976d2;
+}
+
+.protocol-tab--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #e0e0e0;
+}
+
+.webrtc-settings {
+  text-align: center;
+  margin-top: 0.5rem;
+}
+
+.room-id-input {
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  width: 200px;
+  font-size: 1rem;
+}
+
+.advanced-settings {
+  border: 1px solid #eee;
+  border-radius: 4px;
+  margin: 1rem 0;
+  overflow: hidden;
+}
+
+.advanced-settings__toggle {
+  width: 100%;
+  text-align: left;
+  background: #f9f9f9;
+  border: none;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.advanced-settings__toggle:hover {
+  background: #f0f0f0;
+}
+
+.advanced-settings__body {
+  padding: 1rem;
+  background: #fff;
+  border-top: 1px solid #eee;
+}
+
+.settings-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.settings-row:last-child {
+  margin-bottom: 0;
+}
+
+.settings-row label {
+  font-size: 0.9rem;
+  color: #333;
+}
+
+.settings-row input[type="number"],
+.settings-row select {
+  padding: 0.3rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  width: 100px;
+}
+
+.mode-toggle {
+  display: flex;
+  gap: 1rem;
+}
+
+.mode-toggle label {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+}

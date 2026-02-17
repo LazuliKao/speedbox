@@ -9,9 +9,19 @@ hyper = { version = "1", features = ["server", "http1"] }
 hyper-util = { version = "0.1", features = ["tokio"] }
 http-body-util = "0.1"
 http-body = "1"
-tokio = { version = "1", features = ["rt-multi-thread", "net", "macros"] }
+tokio = { version = "1", features = ["rt-multi-thread", "net", "macros", "sync"] }
 bytes = "1"
 futures-core = "0.3"
+
+[features]
+default = ["ws", "webrtc"]
+ws = ["dep:fastwebsockets"]
+webrtc = ["dep:fastwebsockets"]
+
+[dependencies.fastwebsockets]
+version = "0.8"
+features = ["upgrade"]
+optional = true
 
 [profile.release]
 opt-level = "s"

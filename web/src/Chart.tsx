@@ -1,8 +1,19 @@
-/**
- * Minimal sparkline chart using SVG polyline — no heavy chart library.
- * Renders time-series data as a simple line chart.
- */
-export function Chart({ data = [], width = 300, height = 80, color = '#2196f3' }) {
+import type { FunctionalComponent } from 'preact';
+import type { HistoryPoint } from './lib/speedtest';
+
+export interface ChartProps {
+  data?: HistoryPoint[];
+  width?: number;
+  height?: number;
+  color?: string;
+}
+
+export const Chart: FunctionalComponent<ChartProps> = ({
+  data = [],
+  width = 300,
+  height = 80,
+  color = '#2196f3',
+}) => {
   if (data.length < 2) return null;
 
   const maxV = Math.max(...data.map((d) => d.v), 1);
@@ -26,4 +37,4 @@ export function Chart({ data = [], width = 300, height = 80, color = '#2196f3' }
       />
     </svg>
   );
-}
+};
