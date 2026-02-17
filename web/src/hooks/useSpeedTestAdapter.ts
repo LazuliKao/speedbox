@@ -43,7 +43,6 @@ export function useSpeedTestAdapter() {
     config: SpeedTestConfig,
     roomId?: string
   ) => {
-    // cleanup previous
     if (adapterRef.current) {
       adapterRef.current.destroy();
       adapterRef.current = null;
@@ -51,28 +50,27 @@ export function useSpeedTestAdapter() {
 
     reset();
 
-    // Create adapter
-    try {
+    const createAdapter = () => {
       switch (protocol) {
         case 'http':
-          adapterRef.current = new HttpAdapter();
-          break;
+          return new HttpAdapter();
         case 'ws':
-          adapterRef.current = new WebSocketAdapter();
-          break;
+          return new WebSocketAdapter();
         case 'webrtc':
           if (!roomId) throw new Error('Room ID required for WebRTC');
-          adapterRef.current = new WebRtcAdapter({ roomId });
-          break;
+          return new WebRtcAdapter({ roomId });
         default:
           throw new Error(`Unknown protocol: ${protocol}`);
       }
+    };
 
-      const adapter = adapterRef.current;
+    const runSingleTest = async (dir: TestDirection) => {
+      const adapter = createAdapter();
+      adapterRef.current = adapter;
 
-      await adapter.start(direction, config, {
-        onProgress: (dir: TestDirection, p: SpeedProgress) => {
-          if (dir === 'download') {
+      await adapter.start(dir, config, {
+        onProgress: (d: TestDirection, p: SpeedProgress) => {
+          if (d === 'download') {
             setDownloadSpeed(p.speedMbps);
             setDownloadHistory(prev => [...prev, { t: p.elapsed, v: p.speedMbps }]);
           } else {
@@ -88,6 +86,18 @@ export function useSpeedTestAdapter() {
           setState('error');
         }
       });
+
+      adapter.destroy();
+      adapterRef.current = null;
+    };
+
+    try {
+      if (config.mode === 'single' && direction === 'download') {
+        await runSingleTest('download');
+        await runSingleTest('upload');
+      } else {
+        await runSingleTest(direction);
+      }
 
       setState('done');
 

@@ -12,4 +12,6 @@ export {
   type TestState,
   DEFAULT_CONFIG,
   apiBase,
+  setApiBase,
+  clearApiBase,
 } from './speedtest';

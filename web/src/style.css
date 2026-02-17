@@ -237,3 +237,69 @@ button {
   cursor: pointer;
   font-size: 0.9rem;
 }
+
+.backend-config {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.backend-config__label {
+  font-weight: 500;
+}
+
+.backend-config__value {
+  font-family: monospace;
+  color: #333;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.backend-config__edit,
+.backend-config__save,
+.backend-config__clear,
+.backend-config__cancel {
+  padding: 0.25rem 0.6rem;
+  font-size: 0.75rem;
+  border-radius: 4px;
+}
+
+.backend-config__edit {
+  background: #e0e0e0;
+  color: #333;
+}
+
+.backend-config__save {
+  background: #2196f3;
+  color: #fff;
+}
+
+.backend-config__clear {
+  background: #ff9800;
+  color: #fff;
+}
+
+.backend-config__cancel {
+  background: #e0e0e0;
+  color: #333;
+}
+
+.backend-config__input {
+  padding: 0.3rem 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  width: 200px;
+  font-family: monospace;
+}
+
+.backend-config--editing {
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}

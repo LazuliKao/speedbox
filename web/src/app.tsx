@@ -4,6 +4,7 @@ import { Gauge } from './Gauge';
 import { Chart } from './Chart';
 import { AdvancedSettings } from './components/AdvancedSettings';
 import { ProtocolSelector, type Protocol } from './components/ProtocolSelector';
+import { BackendConfig } from './components/BackendConfig';
 import { useSpeedTestAdapter } from './hooks/useSpeedTestAdapter';
 import { DEFAULT_CONFIG, type SpeedTestConfig } from './lib/speedtest';
 
@@ -31,6 +32,10 @@ export const App: FunctionalComponent = () => {
     run(protocol, direction, config, roomId);
   };
 
+  const handleStartBoth = () => {
+    run(protocol, 'download', config, roomId);
+  };
+
   let stateLabel = 'Idle';
   if (state === 'downloading') stateLabel = 'Downloading...';
   else if (state === 'uploading') stateLabel = 'Uploading...';
@@ -40,6 +45,8 @@ export const App: FunctionalComponent = () => {
   return (
     <div class="speedbox">
       <h1>Speedbox</h1>
+
+      <BackendConfig disabled={isRunning} />
 
       <ProtocolSelector
         selected={protocol}
@@ -81,7 +88,17 @@ export const App: FunctionalComponent = () => {
       {error && <div class="error">{error}</div>}
 
       <div class="controls">
-        {!isRunning && (
+        {!isRunning && config.mode === 'single' && (
+          <button
+            class="start-button"
+            onClick={handleStartBoth}
+            disabled={protocol === 'webrtc' && !roomId}
+          >
+            ▶ Start Speed Test
+          </button>
+        )}
+
+        {!isRunning && config.mode === 'continuous' && (
           <>
             <button
               class="start-button"
