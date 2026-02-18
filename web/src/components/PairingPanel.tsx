@@ -80,7 +80,7 @@ export const PairingPanel: FunctionalComponent<PairingPanelProps> = ({
   if (pairingState === 'disconnected') {
     content = (
       <div class="pairing-panel pairing-panel--disconnected">
-        <button class="start-button" onClick={onConnect} disabled={disabled}>
+        <button class="fui-Button fui-Button--primary" onClick={onConnect} disabled={disabled}>
           Connect to Nearby Devices
         </button>
       </div>
@@ -100,7 +100,7 @@ export const PairingPanel: FunctionalComponent<PairingPanelProps> = ({
             </button>
           )}
         </div>
-        <button class="reset-button" onClick={onUnpair} disabled={disabled}>
+        <button class="fui-Button fui-Button--small" onClick={onUnpair} disabled={disabled}>
           Unpair
         </button>
       </div>
@@ -109,25 +109,25 @@ export const PairingPanel: FunctionalComponent<PairingPanelProps> = ({
      const targetName = lobbyPeers.find(p => p.id === pendingId)?.name || 'device';
      content = (
         <div class="pairing-panel pairing-panel--pending">
-            <div class="pair-request-content">
-               <span class="spinner"></span>
-               <p>Waiting for <strong>{targetName}</strong> to accept...</p>
-               <button class="backend-config__cancel" onClick={onDisconnect}>Cancel</button>
-            </div>
+           <span class="spinner" />
+           <p style={{ color: 'var(--colorNeutralForeground2)', fontSize: 'var(--fontSizeBase300)' }}>
+             Waiting for <strong>{targetName}</strong> to accept...
+           </p>
+           <button class="fui-Button fui-Button--small" onClick={onDisconnect}>Cancel</button>
         </div>
      );
   } else {
     content = (
       <div class="pairing-panel pairing-panel--lobby">
         {deviceName && (
-          <div class="device-name-display" style="padding: 8px 12px; background: rgba(74, 222, 128, 0.1); border: 1px solid rgba(74, 222, 128, 0.3); border-radius: 6px; margin-bottom: 12px;">
-            <span style="color: #4ade80; font-weight: 600;">Your Device: </span>
-            <span style="color: #fff;">{deviceName}</span>
+          <div class="device-name-display">
+            <span class="device-name-display__label">Your Device: </span>
+            <span class="device-name-display__value">{deviceName}</span>
           </div>
         )}
         <div class="lobby-header">
           <h3>Nearby Devices ({lobbyPeers.length})</h3>
-          <button class="backend-config__cancel" onClick={onDisconnect}>
+          <button class="fui-Button fui-Button--subtle fui-Button--small" onClick={onDisconnect}>
             Disconnect
           </button>
         </div>
@@ -135,7 +135,7 @@ export const PairingPanel: FunctionalComponent<PairingPanelProps> = ({
         <div class="lobby-list">
           {lobbyPeers.length === 0 ? (
             <div class="lobby-empty">
-              <span class="spinner"></span>
+              <span class="spinner" />
               Waiting for other devices...
             </div>
           ) : (
@@ -143,7 +143,7 @@ export const PairingPanel: FunctionalComponent<PairingPanelProps> = ({
               <div key={peer.id} class="lobby-peer">
                 <span class="peer-name">{peer.name}</span>
                 <button
-                  class="backend-config__save"
+                  class="fui-Button fui-Button--primary fui-Button--small"
                   onClick={() => handleRequest(peer.id)}
                   disabled={disabled}
                 >
@@ -167,8 +167,8 @@ export const PairingPanel: FunctionalComponent<PairingPanelProps> = ({
             <h4>Pair Request</h4>
             <p><strong>{pairRequest.fromName}</strong> wants to pair with you.</p>
             <div class="pair-actions">
-              <button class="start-button" onClick={onAcceptPair}>Accept</button>
-              <button class="stop-button" onClick={onRejectPair}>Reject</button>
+              <button class="fui-Button fui-Button--primary" onClick={onAcceptPair}>Accept</button>
+              <button class="fui-Button fui-Button--danger" onClick={onRejectPair}>Reject</button>
             </div>
           </div>
         </div>
@@ -219,14 +219,31 @@ export const PairingPanel: FunctionalComponent<PairingPanelProps> = ({
                 <span class="debug-label">Bytes Sent:</span>
                 <span class="debug-value">{((debugInfo.bytesSent || 0) / 1024 / 1024).toFixed(2)} MB</span>
               </div>
-              <div class="debug-row" style="flex-direction: column; align-items: flex-start;">
+              <div class="debug-row" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
                 <span class="debug-label">Recent Messages:</span>
-                <div style="font-family: monospace; font-size: 11px; max-height: 100px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 4px; border-radius: 4px; margin-top: 4px; width: 100%;">
+                <div style={{
+                  fontFamily: 'var(--fontFamilyMonospace)',
+                  fontSize: 'var(--fontSizeBase100)',
+                  maxHeight: '100px',
+                  overflowY: 'auto',
+                  background: 'var(--colorNeutralBackground3)',
+                  padding: '4px',
+                  borderRadius: 'var(--borderRadiusSmall)',
+                  marginTop: '4px',
+                  width: '100%',
+                  color: 'var(--colorNeutralForeground1)',
+                }}>
                   {debugInfo.recentMessages.length === 0 ? (
-                    <span style="color: #666;">No messages yet</span>
+                    <span style={{ color: 'var(--colorNeutralForeground4)' }}>No messages yet</span>
                   ) : (
                     debugInfo.recentMessages.map((msg, i) => (
-                      <div key={i} style={{ color: msg.includes('TEST_START') ? '#4ade80' : msg.includes('ERROR') ? '#f87171' : '#fff' }}>
+                      <div key={i} style={{
+                        color: msg.includes('TEST_START')
+                          ? 'var(--colorStatusSuccessForeground1)'
+                          : msg.includes('ERROR')
+                            ? 'var(--colorStatusDangerForeground1)'
+                            : 'var(--colorNeutralForeground1)',
+                      }}>
                         {msg}
                       </div>
                     ))
@@ -235,7 +252,7 @@ export const PairingPanel: FunctionalComponent<PairingPanelProps> = ({
               </div>
             </div>
             <div class="pair-actions">
-              <button class="backend-config__save" onClick={handleCloseModal}>Close</button>
+              <button class="fui-Button fui-Button--primary fui-Button--small" onClick={handleCloseModal}>Close</button>
             </div>
           </div>
         </div>

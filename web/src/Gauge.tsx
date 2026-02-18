@@ -22,6 +22,13 @@ export const Gauge: FunctionalComponent<GaugeProps> = ({
   const pct = Math.min(value / max, 1);
   const offset = circumference * (1 - pct);
 
+  const valueColor =
+    pct > 0.8
+      ? 'var(--colorStatusSuccessForeground1)'
+      : pct > 0.4
+        ? 'var(--colorStatusWarningForeground1)'
+        : 'var(--colorCompoundBrandStroke)';
+
   return (
     <svg
       class={`gauge ${active ? 'gauge--active' : ''}`}
@@ -32,24 +39,25 @@ export const Gauge: FunctionalComponent<GaugeProps> = ({
       <path
         d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`}
         fill="none"
-        stroke="#e0e0e0"
+        style={{ stroke: 'var(--colorNeutralStroke2)' }}
         stroke-width="14"
         stroke-linecap="round"
       />
       <path
         d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`}
         fill="none"
-        stroke={pct > 0.8 ? '#4caf50' : pct > 0.4 ? '#ff9800' : '#2196f3'}
+        style={{ stroke: valueColor, transition: 'stroke-dashoffset 0.3s ease, stroke 0.3s ease' }}
         stroke-width="14"
         stroke-linecap="round"
         stroke-dasharray={circumference}
         stroke-dashoffset={offset}
-        style={{ transition: 'stroke-dashoffset 0.3s ease' }}
       />
-      <text x={cx} y={cy - 15} text-anchor="middle" font-size="28" font-weight="bold" fill="#333">
+      <text x={cx} y={cy - 15} text-anchor="middle" font-size="28" font-weight="bold"
+        style={{ fill: 'var(--colorNeutralForeground1)', fontFamily: 'var(--fontFamilyBase)' }}>
         {value < 10 ? value.toFixed(1) : Math.round(value)}
       </text>
-      <text x={cx} y={cy + 5} text-anchor="middle" font-size="13" fill="#888">
+      <text x={cx} y={cy + 5} text-anchor="middle" font-size="13"
+        style={{ fill: 'var(--colorNeutralForeground3)', fontFamily: 'var(--fontFamilyBase)' }}>
         {label}
       </text>
     </svg>

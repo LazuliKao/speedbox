@@ -36,22 +36,25 @@ export const ProtocolSelector: FunctionalComponent<ProtocolSelectorProps> = ({
 
   return (
     <div class="protocol-selector">
-      {protocols.map((p) => {
-        const isAvailable = features.length === 0 || features.includes(p.id);
-        return (
-          <button
-            key={p.id}
-            class={`protocol-tab ${selected === p.id ? 'protocol-tab--active' : ''} ${
-              !isAvailable ? 'protocol-tab--disabled' : ''
-            }`}
-            onClick={() => isAvailable && onSelect(p.id)}
-            disabled={disabled || !isAvailable}
-            title={!isAvailable ? 'Not supported by server' : ''}
-          >
-            {p.label}
-          </button>
-        );
-      })}
+      <div class="fui-TabList" role="tablist">
+        {protocols.map((p) => {
+          const isAvailable = features.length === 0 || features.includes(p.id);
+          const isSelected = selected === p.id;
+          return (
+            <button
+              key={p.id}
+              role="tab"
+              class={`fui-Tab${isSelected ? ' fui-Tab--selected' : ''}`}
+              aria-selected={isSelected}
+              onClick={() => isAvailable && onSelect(p.id)}
+              disabled={disabled || !isAvailable}
+              title={!isAvailable ? 'Not supported by server' : ''}
+            >
+              {p.label}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 };

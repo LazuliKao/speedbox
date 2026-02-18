@@ -1,0 +1,252 @@
+/* Fluent UI Design Tokens — Light Theme (default) */
+:root {
+  /* === NEUTRAL BACKGROUNDS === */
+  --colorNeutralBackground1: #ffffff;
+  --colorNeutralBackground1Hover: #f5f5f5;
+  --colorNeutralBackground1Pressed: #e0e0e0;
+  --colorNeutralBackground2: #fafafa;
+  --colorNeutralBackground3: #f0f0f0;
+  --colorNeutralBackground3Hover: #ebebeb;
+  --colorNeutralBackground3Pressed: #e0e0e0;
+  --colorNeutralBackgroundDisabled: #f0f0f0;
+
+  /* === NEUTRAL FOREGROUNDS === */
+  --colorNeutralForeground1: #242424;
+  --colorNeutralForeground1Hover: #242424;
+  --colorNeutralForeground1Pressed: #242424;
+  --colorNeutralForeground2: #424242;
+  --colorNeutralForeground2Hover: #242424;
+  --colorNeutralForeground2Pressed: #242424;
+  --colorNeutralForeground2BrandHover: #0067b8;
+  --colorNeutralForeground2BrandPressed: #005a9e;
+  --colorNeutralForeground3: #616161;
+  --colorNeutralForeground4: #707070;
+  --colorNeutralForegroundDisabled: #bdbdbd;
+  --colorNeutralForegroundInverted: #ffffff;
+  --colorNeutralForegroundOnBrand: #ffffff;
+
+  /* === NEUTRAL STROKES === */
+  --colorNeutralStroke1: #d1d1d1;
+  --colorNeutralStroke1Hover: #c7c7c7;
+  --colorNeutralStroke1Pressed: #b3b3b3;
+  --colorNeutralStroke2: #e0e0e0;
+  --colorNeutralStrokeAccessible: #616161;
+  --colorNeutralStrokeAccessibleHover: #474747;
+  --colorNeutralStrokeAccessiblePressed: #2e2e2e;
+  --colorNeutralStrokeDisabled: #c7c7c7;
+
+  /* === BRAND === */
+  --colorBrandBackground: #0078d4;
+  --colorBrandBackgroundHover: #106ebe;
+  --colorBrandBackgroundPressed: #005a9e;
+  --colorBrandBackground2: #cce4f6;
+  --colorBrandBackground2Hover: #b3d7f2;
+  --colorBrandBackground2Pressed: #9acaed;
+  --colorBrandForeground1: #0078d4;
+  --colorBrandForeground2: #005499;
+  --colorBrandForeground2Hover: #004885;
+  --colorBrandForeground2Pressed: #003d73;
+
+  /* === COMPOUND BRAND === */
+  --colorCompoundBrandBackground: #0078d4;
+  --colorCompoundBrandBackgroundHover: #106ebe;
+  --colorCompoundBrandBackgroundPressed: #005a9e;
+  --colorCompoundBrandStroke: #0078d4;
+  --colorCompoundBrandStrokeHover: #106ebe;
+  --colorCompoundBrandStrokePressed: #005a9e;
+  --colorCompoundBrandForeground1: #0078d4;
+  --colorCompoundBrandForeground1Hover: #106ebe;
+  --colorCompoundBrandForeground1Pressed: #005a9e;
+
+  /* === SUBTLE / TRANSPARENT === */
+  --colorSubtleBackground: transparent;
+  --colorSubtleBackgroundHover: #f5f5f5;
+  --colorSubtleBackgroundPressed: #e0e0e0;
+  --colorTransparentBackground: transparent;
+  --colorTransparentBackgroundHover: rgba(0, 0, 0, 0.04);
+  --colorTransparentBackgroundPressed: rgba(0, 0, 0, 0.06);
+  --colorTransparentStroke: transparent;
+  --colorTransparentStrokeInteractive: transparent;
+  --colorTransparentStrokeDisabled: transparent;
+
+  /* === STATUS === */
+  --colorStatusSuccessBackground1: #f1faf1;
+  --colorStatusSuccessBackground3: #dff6dd;
+  --colorStatusSuccessForeground1: #107c10;
+  --colorStatusSuccessForeground3: #0e5e0e;
+  --colorStatusSuccessBorderActive: #107c10;
+  --colorStatusDangerBackground1: #fef0f1;
+  --colorStatusDangerForeground1: #d13438;
+  --colorStatusDangerBorderActive: #d13438;
+  --colorStatusWarningBackground1: #fff8e7;
+  --colorStatusWarningForeground1: #835b00;
+  --colorPaletteRedBorder2: #d13438;
+  --colorPaletteGreenForeground1: #107c10;
+
+  /* === FOCUS === */
+  --colorStrokeFocus2: #000000;
+
+  /* === SHADOWS === */
+  --shadow2: 0px 1px 2px rgba(0,0,0,.14), 0px 0px 2px rgba(0,0,0,.12);
+  --shadow4: 0px 2px 4px rgba(0,0,0,.14), 0px 0px 2px rgba(0,0,0,.12);
+  --shadow8: 0px 4px 8px rgba(0,0,0,.14), 0px 0px 2px rgba(0,0,0,.12);
+  --shadow16: 0px 8px 16px rgba(0,0,0,.14), 0px 0px 2px rgba(0,0,0,.12);
+  --shadow28: 0px 14px 28px rgba(0,0,0,.12), 0px 0px 8px rgba(0,0,0,.12);
+
+  /* === TYPOGRAPHY === */
+  --fontFamilyBase: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+  --fontFamilyMonospace: 'Cascadia Code', 'Courier New', Courier, monospace;
+  --fontSizeBase100: 10px;
+  --fontSizeBase200: 12px;
+  --fontSizeBase300: 14px;
+  --fontSizeBase400: 16px;
+  --fontSizeBase500: 20px;
+  --fontSizeBase600: 24px;
+  --fontSizeHero700: 28px;
+  --fontSizeHero800: 32px;
+  --fontWeightRegular: 400;
+  --fontWeightMedium: 500;
+  --fontWeightSemibold: 600;
+  --fontWeightBold: 700;
+  --lineHeightBase100: 14px;
+  --lineHeightBase200: 16px;
+  --lineHeightBase300: 20px;
+  --lineHeightBase400: 22px;
+  --lineHeightBase500: 28px;
+  --lineHeightBase600: 32px;
+
+  /* === BORDER === */
+  --borderRadiusNone: 0;
+  --borderRadiusSmall: 2px;
+  --borderRadiusMedium: 4px;
+  --borderRadiusLarge: 6px;
+  --borderRadiusXLarge: 8px;
+  --borderRadiusCircular: 10000px;
+  --strokeWidthThin: 1px;
+  --strokeWidthThick: 2px;
+  --strokeWidthThicker: 3px;
+  --strokeWidthThickest: 4px;
+
+  /* === SPACING — HORIZONTAL === */
+  --spacingHorizontalNone: 0;
+  --spacingHorizontalXXS: 2px;
+  --spacingHorizontalXS: 4px;
+  --spacingHorizontalSNudge: 6px;
+  --spacingHorizontalS: 8px;
+  --spacingHorizontalMNudge: 10px;
+  --spacingHorizontalM: 12px;
+  --spacingHorizontalL: 16px;
+  --spacingHorizontalXL: 20px;
+  --spacingHorizontalXXL: 24px;
+  --spacingHorizontalXXXL: 32px;
+
+  /* === SPACING — VERTICAL === */
+  --spacingVerticalNone: 0;
+  --spacingVerticalXXS: 2px;
+  --spacingVerticalXS: 4px;
+  --spacingVerticalSNudge: 6px;
+  --spacingVerticalS: 8px;
+  --spacingVerticalMNudge: 10px;
+  --spacingVerticalM: 12px;
+  --spacingVerticalL: 16px;
+  --spacingVerticalXL: 20px;
+  --spacingVerticalXXL: 24px;
+  --spacingVerticalXXXL: 32px;
+
+  /* === ANIMATION === */
+  --durationUltraFast: 50ms;
+  --durationFaster: 100ms;
+  --durationFast: 150ms;
+  --durationNormal: 200ms;
+  --durationSlow: 300ms;
+  --durationSlower: 400ms;
+  --durationUltraSlow: 500ms;
+  --curveEasyEase: cubic-bezier(0.33, 0, 0.67, 1);
+  --curveDecelerateMid: cubic-bezier(0.1, 0.9, 0.2, 1);
+  --curveAccelerateMid: cubic-bezier(0.7, 0, 1, 0.5);
+  --curveLinear: cubic-bezier(0, 0, 1, 1);
+}
+
+/* === DARK THEME === */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --colorNeutralBackground1: #292929;
+    --colorNeutralBackground1Hover: #3d3d3d;
+    --colorNeutralBackground1Pressed: #1f1f1f;
+    --colorNeutralBackground2: #1f1f1f;
+    --colorNeutralBackground3: #141414;
+    --colorNeutralBackground3Hover: #1a1a1a;
+    --colorNeutralBackground3Pressed: #0a0a0a;
+    --colorNeutralBackgroundDisabled: #141414;
+
+    --colorNeutralForeground1: #ffffff;
+    --colorNeutralForeground1Hover: #ffffff;
+    --colorNeutralForeground1Pressed: #ffffff;
+    --colorNeutralForeground2: #d6d6d6;
+    --colorNeutralForeground2Hover: #ffffff;
+    --colorNeutralForeground2Pressed: #ffffff;
+    --colorNeutralForeground2BrandHover: #62aaf7;
+    --colorNeutralForeground2BrandPressed: #2886de;
+    --colorNeutralForeground3: #ababab;
+    --colorNeutralForeground4: #969696;
+    --colorNeutralForegroundDisabled: #5c5c5c;
+    --colorNeutralForegroundInverted: #242424;
+    --colorNeutralForegroundOnBrand: #242424;
+
+    --colorNeutralStroke1: #424242;
+    --colorNeutralStroke1Hover: #4d4d4d;
+    --colorNeutralStroke1Pressed: #595959;
+    --colorNeutralStroke2: #333333;
+    --colorNeutralStrokeAccessible: #ababab;
+    --colorNeutralStrokeAccessibleHover: #bdbdbd;
+    --colorNeutralStrokeAccessiblePressed: #d6d6d6;
+    --colorNeutralStrokeDisabled: #424242;
+
+    --colorBrandBackground: #479ef5;
+    --colorBrandBackgroundHover: #2886de;
+    --colorBrandBackgroundPressed: #1874c4;
+    --colorBrandBackground2: #003966;
+    --colorBrandBackground2Hover: #004478;
+    --colorBrandBackground2Pressed: #00305a;
+    --colorBrandForeground1: #479ef5;
+    --colorBrandForeground2: #479ef5;
+    --colorBrandForeground2Hover: #62aaf7;
+    --colorBrandForeground2Pressed: #2886de;
+
+    --colorCompoundBrandBackground: #479ef5;
+    --colorCompoundBrandBackgroundHover: #2886de;
+    --colorCompoundBrandBackgroundPressed: #1874c4;
+    --colorCompoundBrandStroke: #479ef5;
+    --colorCompoundBrandStrokeHover: #2886de;
+    --colorCompoundBrandStrokePressed: #1874c4;
+    --colorCompoundBrandForeground1: #479ef5;
+    --colorCompoundBrandForeground1Hover: #2886de;
+    --colorCompoundBrandForeground1Pressed: #1874c4;
+
+    --colorSubtleBackgroundHover: rgba(255, 255, 255, 0.08);
+    --colorSubtleBackgroundPressed: rgba(255, 255, 255, 0.06);
+    --colorTransparentBackgroundHover: rgba(255, 255, 255, 0.04);
+    --colorTransparentBackgroundPressed: rgba(255, 255, 255, 0.06);
+
+    --colorStatusSuccessBackground1: #052505;
+    --colorStatusSuccessBackground3: #0d4b0d;
+    --colorStatusSuccessForeground1: #54b054;
+    --colorStatusSuccessForeground3: #9fd89f;
+    --colorStatusSuccessBorderActive: #54b054;
+    --colorStatusDangerBackground1: #3b0509;
+    --colorStatusDangerForeground1: #f1595f;
+    --colorStatusDangerBorderActive: #f1595f;
+    --colorStatusWarningBackground1: #2c1f00;
+    --colorStatusWarningForeground1: #fce100;
+    --colorPaletteRedBorder2: #f1595f;
+    --colorPaletteGreenForeground1: #54b054;
+
+    --colorStrokeFocus2: #ffffff;
+
+    --shadow2: 0px 1px 2px rgba(0,0,0,.30), 0px 0px 2px rgba(0,0,0,.25);
+    --shadow4: 0px 2px 4px rgba(0,0,0,.30), 0px 0px 2px rgba(0,0,0,.25);
+    --shadow8: 0px 4px 8px rgba(0,0,0,.30), 0px 0px 2px rgba(0,0,0,.25);
+    --shadow16: 0px 8px 16px rgba(0,0,0,.30), 0px 0px 2px rgba(0,0,0,.25);
+    --shadow28: 0px 14px 28px rgba(0,0,0,.24), 0px 0px 8px rgba(0,0,0,.20);
+  }
+}

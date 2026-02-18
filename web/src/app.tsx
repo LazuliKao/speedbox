@@ -167,7 +167,7 @@ export const App: FunctionalComponent = () => {
 
   return (
     <div class="speedbox">
-      <h1>Speedbox</h1>
+      <h1 class="speedbox__title">Speedbox</h1>
 
       <BackendConfig disabled={isRunning} />
 
@@ -208,7 +208,7 @@ export const App: FunctionalComponent = () => {
             label={isPaired ? 'Download (You)' : 'Download'}
             active={displayState === 'downloading'}
           />
-          <Chart data={displayDownloadHistory} color="#2196f3" />
+          <Chart data={displayDownloadHistory} color="var(--colorCompoundBrandStroke)" />
         </div>
         <div class="gauge-group">
           <Gauge
@@ -216,7 +216,7 @@ export const App: FunctionalComponent = () => {
             label={isPaired ? 'Upload (You)' : 'Upload'}
             active={displayState === 'uploading'}
           />
-          <Chart data={displayUploadHistory} color="#ff9800" />
+          <Chart data={displayUploadHistory} color="var(--colorStatusSuccessForeground1)" />
         </div>
       </div>
 
@@ -228,7 +228,7 @@ export const App: FunctionalComponent = () => {
               label={`Download (${webrtc.partnerName})`}
               active={webrtc.peerTestState === 'downloading'}
             />
-            <Chart data={webrtc.peerDownloadHistory} color="#2196f3" />
+            <Chart data={webrtc.peerDownloadHistory} color="var(--colorCompoundBrandStroke)" />
           </div>
           <div class="gauge-group">
             <Gauge
@@ -236,7 +236,7 @@ export const App: FunctionalComponent = () => {
               label={`Upload (${webrtc.partnerName})`}
               active={webrtc.peerTestState === 'uploading'}
             />
-            <Chart data={webrtc.peerUploadHistory} color="#ff9800" />
+            <Chart data={webrtc.peerUploadHistory} color="var(--colorStatusSuccessForeground1)" />
           </div>
         </div>
       )}
@@ -250,7 +250,7 @@ export const App: FunctionalComponent = () => {
       <div class="controls">
         {canStart && !isDone && config.mode === 'single' && (
           <button
-            class="start-button"
+            class="fui-Button fui-Button--primary"
             onClick={handleStartBoth}
           >
             ▶ Start Speed Test
@@ -260,13 +260,13 @@ export const App: FunctionalComponent = () => {
         {canStart && !isDone && config.mode === 'continuous' && (
           <>
             <button
-              class="start-button"
+              class="fui-Button fui-Button--primary"
               onClick={() => handleStart('download')}
             >
               ▶ Download
             </button>
             <button
-              class="start-button"
+              class="fui-Button fui-Button--primary"
               onClick={() => handleStart('upload')}
             >
               ▲ Upload
@@ -275,13 +275,13 @@ export const App: FunctionalComponent = () => {
         )}
 
         {isRunning && (
-          <button class="stop-button" onClick={handleStop}>
+          <button class="fui-Button fui-Button--danger" onClick={handleStop}>
             ⏹ Stop
           </button>
         )}
 
         {isDone && (
-          <button class="reset-button" onClick={handleReset}>
+          <button class="fui-Button" onClick={handleReset}>
             ↺ Reset
           </button>
         )}

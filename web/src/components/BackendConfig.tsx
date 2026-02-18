@@ -42,7 +42,7 @@ export const BackendConfig: FunctionalComponent<Props> = ({ disabled }) => {
           {currentBase || '(same origin)'}
         </span>
         <button
-          class="backend-config__edit"
+          class="fui-Button fui-Button--subtle fui-Button--small"
           onClick={() => setEditing(true)}
           disabled={disabled}
         >
@@ -53,23 +53,26 @@ export const BackendConfig: FunctionalComponent<Props> = ({ disabled }) => {
   }
 
   return (
-    <div class="backend-config backend-config--editing">
+    <div class="backend-config">
       <span class="backend-config__label">Backend:</span>
-      <input
-        class="backend-config__input"
-        type="text"
-        placeholder="http://192.168.1.100:8080"
-        value={inputValue}
-        onInput={(e) => setInputValue((e.target as HTMLInputElement).value)}
-        disabled={disabled}
-      />
-      <button class="backend-config__save" onClick={handleSave} disabled={disabled}>
+      <div class={`fui-Input${disabled ? ' fui-Input--disabled' : ''}`} style={{ width: '200px' }}>
+        <input
+          class="fui-Input__input"
+          type="text"
+          placeholder="http://192.168.1.100:8080"
+          value={inputValue}
+          onInput={(e) => setInputValue((e.target as HTMLInputElement).value)}
+          disabled={disabled}
+          style={{ fontFamily: 'var(--fontFamilyMonospace)', fontSize: 'var(--fontSizeBase200)' }}
+        />
+      </div>
+      <button class="fui-Button fui-Button--primary fui-Button--small" onClick={handleSave} disabled={disabled}>
         Save
       </button>
-      <button class="backend-config__clear" onClick={handleClear} disabled={disabled}>
+      <button class="fui-Button fui-Button--subtle fui-Button--small" onClick={handleClear} disabled={disabled}>
         Reset
       </button>
-      <button class="backend-config__cancel" onClick={handleCancel} disabled={disabled}>
+      <button class="fui-Button fui-Button--small" onClick={handleCancel} disabled={disabled}>
         Cancel
       </button>
     </div>
