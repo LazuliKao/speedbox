@@ -210,3 +210,7 @@ Default: both features enabled. Build with `--no-default-features` for HTTP-only
 - **P2P WebRTC**: Peers connect via signaling server at `/ws/signal`. Room-based discovery.
 - **Streaming**: Backend streams infinite data for download tests; client aborts after duration.
 - **OpenWrt Target**: Release build optimized for size (`opt-level = "s"`, LTO, strip).
+
+
+## How to test
+remind the user to run both backend and frontend servers before testing in background, then launch the browser to http://localhost:5173/?api=http://localhost:8080 (by default) using playwright tools to access the UI. 

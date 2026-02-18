@@ -21,8 +21,8 @@ export default defineConfig({
           minify: {
             compress: {
               unused: true,
-              drop_console: true,
-              drop_debugger: true,
+              drop_console: false,
+              drop_debugger: false,
             },
             mangle: true,
           },
@@ -36,8 +36,8 @@ export default defineConfig({
     minify: 'terser',
     terserOptions: {
       compress: {
-        drop_console: true,
-        drop_debugger: true,
+        drop_console: false,
+        drop_debugger: false,
         passes: 2,
       },
       mangle: true,

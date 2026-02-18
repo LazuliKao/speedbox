@@ -6,18 +6,28 @@ import {
   type PairRequest,
   type WebRtcEvents,
 } from '../lib/adapters/webrtc';
+import { apiBase } from '../lib/speedtest';
 import type {
   SpeedTestConfig,
   TestDirection,
   HistoryPoint,
   TestState,
-  SpeedTestCallbacks
 } from '../lib/speedtest';
+
+const getSignalingUrl = (): string => {
+  const base = apiBase();
+  if (base) {
+    return base.replace(/^http/, 'ws') + '/ws/signal';
+  }
+  const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${proto}//${window.location.host}/ws/signal`;
+};
 
 export interface UseWebRtcPairingReturn {
   pairingState: PairingState;
   lobbyPeers: LobbyPeer[];
-  pairRequest: PairRequest | null;
+    pairRequest: PairRequest | null;
+    deviceName: string | null;
   
   connect: () => void;
   disconnect: () => void;
@@ -29,14 +39,25 @@ export interface UseWebRtcPairingReturn {
   partnerId: string | null;
   partnerName: string | null;
   
+  // Remote peer's progress (what they are doing)
   peerDownloadSpeed: number;
   peerUploadSpeed: number;
   peerTestState: TestState;
   peerDownloadHistory: HistoryPoint[];
   peerUploadHistory: HistoryPoint[];
   
+  // Local progress (what WE are doing in response to peer's test)
+  localDownloadSpeed: number;
+  localUploadSpeed: number;
+  localDownloadHistory: HistoryPoint[];
+  localUploadHistory: HistoryPoint[];
+  localPassiveState: TestState;
+  
+  resetPeerState: () => void;
+
   adapter: WebRtcAdapter | null;
   error: string | null;
+  getDebugInfo: () => any;
 }
 
 export function useWebRtcPairing(): UseWebRtcPairingReturn {
@@ -53,31 +74,66 @@ export function useWebRtcPairing(): UseWebRtcPairingReturn {
   const [peerDownloadHistory, setPeerDownloadHistory] = useState<HistoryPoint[]>([]);
   const [peerUploadHistory, setPeerUploadHistory] = useState<HistoryPoint[]>([]);
 
+  // Local progress state
+  const [localDownloadSpeed, setLocalDownloadSpeed] = useState(0);
+  const [localUploadSpeed, setLocalUploadSpeed] = useState(0);
+  const [localDownloadHistory, setLocalDownloadHistory] = useState<HistoryPoint[]>([]);
+  const [localUploadHistory, setLocalUploadHistory] = useState<HistoryPoint[]>([]);
+  const [localPassiveState, setLocalPassiveState] = useState<TestState>('idle');
+  const [deviceName, setDeviceName] = useState<string | null>(null);
+
   const adapterRef = useRef<WebRtcAdapter | null>(null);
   const [adapter, setAdapter] = useState<WebRtcAdapter | null>(null);
 
-  const handlePeerTestStart = useCallback((config: SpeedTestConfig & { initiatorDirection: TestDirection }, remoteDirection: TestDirection) => {
-    setPeerTestState(remoteDirection === 'download' ? 'downloading' : 'uploading');
+  const doLocalReset = useCallback(() => {
+    setPeerTestState('idle');
     setPeerDownloadSpeed(0);
     setPeerUploadSpeed(0);
     setPeerDownloadHistory([]);
     setPeerUploadHistory([]);
+    setLocalDownloadSpeed(0);
+    setLocalUploadSpeed(0);
+    setLocalDownloadHistory([]);
+    setLocalUploadHistory([]);
+    setLocalPassiveState('idle');
+    setError(null);
+  }, []);
+
+  const handlePeerTestStart = useCallback((config: SpeedTestConfig & { initiatorDirection: TestDirection; phase: number }) => {
+    const remoteDirection = config.initiatorDirection;
+    const phase = config.phase ?? 1;
+    console.log('[handlePeerTestStart] Received TEST_START, direction:', remoteDirection, 'phase:', phase);
+    setPeerTestState(remoteDirection === 'download' ? 'downloading' : 'uploading');
+    
+    if (phase === 1) {
+      setPeerDownloadSpeed(0);
+      setPeerUploadSpeed(0);
+      setPeerDownloadHistory([]);
+      setPeerUploadHistory([]);
+      setLocalDownloadSpeed(0);
+      setLocalUploadSpeed(0);
+      setLocalDownloadHistory([]);
+      setLocalUploadHistory([]);
+    }
     
     const localDirection = remoteDirection === 'download' ? 'upload' : 'download';
     
-    const callbacks: SpeedTestCallbacks = {
-        onProgress: (_dir, _prog) => {
-            // Local progress handling if needed
+    if (adapterRef.current) {
+      adapterRef.current.startRemote(localDirection, config, {
+        onProgress: (dir, progress) => {
+          const speed = progress.speedMbps ?? 0;
+          if (dir === 'download') {
+            setLocalDownloadSpeed(speed);
+            setLocalDownloadHistory(prev => [...prev, { t: progress.elapsed, v: speed }]);
+          } else {
+            setLocalUploadSpeed(speed);
+            setLocalUploadHistory(prev => [...prev, { t: progress.elapsed, v: speed }]);
+          }
         },
-        onStateChange: (state) => {
-             if (state === 'done' || state === 'error') {
-                 setPeerTestState('idle');
-             }
-        },
-        onError: (err) => setError(err)
-    };
-    
-    adapterRef.current?.startRemote(localDirection, config, callbacks).catch(e => setError(e.message));
+        onStateChange: (s) => setLocalPassiveState(s),
+        onError: () => {}
+      });
+    }
   }, []);
 
   const createAdapter = useCallback(() => {
@@ -90,17 +146,21 @@ export function useWebRtcPairing(): UseWebRtcPairingReturn {
           setPairRequest(null);
           setPartnerId(null);
           setPartnerName(null);
-          setPeerTestState('idle');
+          doLocalReset();
         }
       },
       onLobbyUpdate: (peers) => {
         setLobbyPeers(peers);
       },
+      onPeerLeft: (peerId) => {
+        setLobbyPeers((prev) => prev.filter((p) => p.id !== peerId));
+      },
       onPairRequest: (req) => {
         setPairRequest(req);
       },
-      onPaired: (pid) => {
+      onPaired: (pid, name) => {
         setPartnerId(pid);
+        setPartnerName(name);
         setPairRequest(null);
         setError(null);
       },
@@ -110,19 +170,22 @@ export function useWebRtcPairing(): UseWebRtcPairingReturn {
         setPeerTestState('idle');
       },
       onPeerTestStart: (config) => {
-        handlePeerTestStart(config, config.initiatorDirection);
+        handlePeerTestStart(config);
       },
       onPeerTestStop: () => {
         setPeerTestState('idle');
-        adapterRef.current?.stop();
+      },
+      onPeerTestReset: () => {
+        doLocalReset();
       },
       onPeerTestUpdate: (progress) => {
+        const speed = progress.speedMbps ?? progress.speed ?? 0;
         if (progress.direction === 'download') {
-          setPeerDownloadSpeed(progress.speed);
-          setPeerDownloadHistory(prev => [...prev, { t: progress.elapsed, v: progress.speed }]);
+          setPeerDownloadSpeed(speed);
+          setPeerDownloadHistory(prev => [...prev, { t: progress.elapsed, v: speed }]);
         } else {
-          setPeerUploadSpeed(progress.speed);
-          setPeerUploadHistory(prev => [...prev, { t: progress.elapsed, v: progress.speed }]);
+          setPeerUploadSpeed(speed);
+          setPeerUploadHistory(prev => [...prev, { t: progress.elapsed, v: speed }]);
         }
       },
       onError: (err) => {
@@ -133,7 +196,8 @@ export function useWebRtcPairing(): UseWebRtcPairingReturn {
     const inst = new WebRtcAdapter(events);
     adapterRef.current = inst;
     setAdapter(inst);
-    inst.connect();
+    setDeviceName(inst.getDebugInfo().deviceName);
+    inst.connect(getSignalingUrl());
   }, [handlePeerTestStart]);
 
   useEffect(() => {
@@ -155,20 +219,37 @@ export function useWebRtcPairing(): UseWebRtcPairingReturn {
     pairingState,
     lobbyPeers,
     pairRequest,
-    connect: () => adapterRef.current?.connect(),
+    connect: () => adapterRef.current?.connect(getSignalingUrl()),
     disconnect: () => adapterRef.current?.disconnect(),
-    requestPair: (id) => adapterRef.current?.requestPair(id),
+    requestPair: (id) => {
+      console.log('[HOOK] requestPair called with id:', id, 'adapter:', !!adapterRef.current);
+      adapterRef.current?.requestPair(id);
+    },
     acceptPair: () => pairRequest && adapterRef.current?.acceptPair(pairRequest.fromId),
-    rejectPair: () => pairRequest && adapterRef.current?.rejectPair(pairRequest.fromId),
+    rejectPair: () => {
+      if (pairRequest) adapterRef.current?.rejectPair(pairRequest.fromId);
+      setPairRequest(null);
+    },
     unpair: () => adapterRef.current?.unpair(),
     partnerId,
     partnerName,
+    deviceName,
     peerDownloadSpeed,
     peerUploadSpeed,
     peerTestState,
     peerDownloadHistory,
     peerUploadHistory,
+    localDownloadSpeed,
+    localUploadSpeed,
+    localDownloadHistory,
+    localUploadHistory,
+    localPassiveState,
+    resetPeerState: () => {
+      doLocalReset();
+      adapterRef.current?.sendTestReset();
+    },
     adapter,
+    getDebugInfo: () => adapterRef.current?.getDebugInfo(),
     error
   };
 }

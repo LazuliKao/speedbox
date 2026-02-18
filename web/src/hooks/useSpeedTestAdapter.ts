@@ -61,9 +61,11 @@ export function useSpeedTestAdapter() {
       }
     };
 
-    const runSingleTest = async (dir: TestDirection) => {
+    const runSingleTest = async (dir: TestDirection): Promise<TestState> => {
       const adapter = createAdapter();
       adapterRef.current = adapter;
+
+      let finalState: TestState = 'idle';
 
       await adapter.start(dir, config, {
         onProgress: (d: TestDirection, p: SpeedProgress) => {
@@ -77,26 +79,33 @@ export function useSpeedTestAdapter() {
         },
         onStateChange: (s: TestState) => {
           setState(s);
+          finalState = s;
         },
         onError: (err: string) => {
           setError(err);
           setState('error');
+          finalState = 'error';
         }
       });
 
       adapter.destroy();
       adapterRef.current = null;
+
+      return finalState;
     };
 
     try {
       if (config.mode === 'single' && direction === 'download') {
-        await runSingleTest('download');
-        await runSingleTest('upload');
+        // Run download phase
+        const phase1Result = await runSingleTest('download');
+        // Only continue to upload if download completed normally
+        if (phase1Result === 'done') {
+          await runSingleTest('upload');
+        }
+        // If interrupted or error, state is already set by adapter
       } else {
         await runSingleTest(direction);
       }
-
-      setState('done');
 
     } catch (e: any) {
       setError(e.message || 'Failed to start test');

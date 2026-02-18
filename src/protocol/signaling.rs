@@ -13,6 +13,7 @@
 //! - `SIGNAL <payload>`   → Forward SDP/ICE to paired peer
 //! - `TEST_START <json>`  → Notify paired peer that test is starting
 //! - `TEST_STOP`          → Notify paired peer that test stopped
+//! - `TEST_RESET`         → Notify paired peer to reset test state
 //! - `TEST_UPDATE <json>` → Send speed/progress update to paired peer
 //!
 //! ### Server → Client:
@@ -246,16 +247,16 @@ async fn handle_message(
                     target.paired_with = Some(sender_id.to_owned());
                     target.pending_pair_from = None;
 
-                    let _ = lob
-                        .get(sender_id)
-                        .unwrap()
-                        .tx
-                        .send(format!("PAIRED {target_id}"));
-                    let _ = lob
-                        .get(target_id)
-                        .unwrap()
-                        .tx
-                        .send(format!("PAIRED {sender_id}"));
+            let sender = lob.get(sender_id).unwrap();
+            let target = lob.get(target_id).unwrap();
+            let sender_name = sender.name.clone();
+            let target_name = target.name.clone();
+            let _ = sender
+                .tx
+                .send(format!("PAIRED {}", json_payload(target_id, &target_name)));
+            let _ = target
+                .tx
+                .send(format!("PAIRED {}", json_payload(sender_id, &sender_name)));
                     return Ok(());
                 }
             }
@@ -311,16 +312,16 @@ async fn handle_message(
             requester.paired_with = Some(my.to_owned());
             requester.pending_pair_from = None;
 
-            let _ = lob
-                .get(my)
-                .unwrap()
+            let me = lob.get(my).unwrap();
+            let requester = lob.get(requester_id).unwrap();
+            let my_name = me.name.clone();
+            let requester_name = requester.name.clone();
+            let _ = me
                 .tx
-                .send(format!("PAIRED {requester_id}"));
-            let _ = lob
-                .get(requester_id)
-                .unwrap()
+                .send(format!("PAIRED {}", json_payload(requester_id, &requester_name)));
+            let _ = requester
                 .tx
-                .send(format!("PAIRED {my}"));
+                .send(format!("PAIRED {}", json_payload(my, &my_name)));
         }
 
         "PAIR_REJECT" => {
@@ -382,6 +383,10 @@ async fn handle_message(
             relay_to_partner(my_id, "TEST_STOP").await;
         }
 
+        "TEST_RESET" => {
+            relay_to_partner(my_id, "TEST_RESET").await;
+        }
+
         "TEST_UPDATE" => {
             relay_to_partner(my_id, &format!("TEST_UPDATE {arg}")).await;
         }
@@ -398,14 +403,24 @@ async fn handle_message(
 
 /// Relay a message to the paired partner (if any).
 async fn relay_to_partner(my_id: &Option<String>, msg: &str) {
-    let Some(my) = my_id.as_ref() else { return };
+    let Some(my) = my_id.as_ref() else { 
+        println!("[relay_to_partner] No my_id, returning");
+        return; 
+    };
     let lob = lobby().read().await;
     if let Some(me) = lob.get(my) {
         if let Some(partner_id) = &me.paired_with {
             if let Some(partner) = lob.get(partner_id) {
+                println!("[relay_to_partner] {} -> {}: {}", my, partner_id, msg.split_whitespace().next().unwrap_or(msg));
                 let _ = partner.tx.send(msg.to_owned());
+            } else {
+                println!("[relay_to_partner] Partner {} not found in lobby", partner_id);
             }
+        } else {
+            println!("[relay_to_partner] {} has no paired_with", my);
         }
+    } else {
+        println!("[relay_to_partner] {} not found in lobby", my);
     }
 }
 
@@ -471,6 +486,10 @@ fn json_str(s: &str) -> String {
         .replace('\r', "\\r")
         .replace('\t', "\\t");
     format!("\"{escaped}\"")
+}
+
+fn json_payload(id: &str, name: &str) -> String {
+    format!("{{\"id\":{},\"name\":{}}}", json_str(id), json_str(name))
 }
 
 /// Minimal JSON parser for HELLO payload: extracts "id" and "name" fields.

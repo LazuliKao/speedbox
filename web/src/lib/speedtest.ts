@@ -39,6 +39,7 @@ export type TestState =
   | 'downloading'
   | 'uploading'
   | 'done'
+  | 'interrupted'
   | 'error';
 
 /** Configuration passed to every adapter. */

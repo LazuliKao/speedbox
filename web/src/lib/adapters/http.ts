@@ -34,10 +34,24 @@ export class HttpAdapter implements SpeedTestAdapter {
 
     if (direction === 'download') {
       callbacks.onStateChange('downloading');
-      return this.runDownload(config, callbacks, signal);
+      return this.runDownload(config, callbacks, signal).then(() => {
+        // Report interrupted if test was stopped before natural completion
+        if (!this.running && signal.aborted) {
+          callbacks.onStateChange('interrupted');
+        } else {
+          callbacks.onStateChange('done');
+        }
+      });
     } else {
       callbacks.onStateChange('uploading');
-      return this.runUpload(config, callbacks, signal);
+      return this.runUpload(config, callbacks, signal).then(() => {
+        // Report interrupted if test was stopped before natural completion
+        if (!this.running && signal.aborted) {
+          callbacks.onStateChange('interrupted');
+        } else {
+          callbacks.onStateChange('done');
+        }
+      });
     }
   }
 

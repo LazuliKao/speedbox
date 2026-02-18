@@ -38,10 +38,24 @@ export class WebSocketAdapter implements SpeedTestAdapter {
 
     if (direction === 'download') {
       callbacks.onStateChange('downloading');
-      return this.runDownload(config, callbacks);
+      return this.runDownload(config, callbacks).then(() => {
+        // Report interrupted if test was stopped before natural completion
+        if (!this.running) {
+          callbacks.onStateChange('interrupted');
+        } else {
+          callbacks.onStateChange('done');
+        }
+      });
     } else {
       callbacks.onStateChange('uploading');
-      return this.runUpload(config, callbacks);
+      return this.runUpload(config, callbacks).then(() => {
+        // Report interrupted if test was stopped before natural completion
+        if (!this.running) {
+          callbacks.onStateChange('interrupted');
+        } else {
+          callbacks.onStateChange('done');
+        }
+      });
     }
   }
 

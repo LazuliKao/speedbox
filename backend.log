@@ -1,0 +1,4 @@
+    Finished `release` profile [optimized] target(s) in 0.07s
+     Running `target\release\speedbox.exe`
+Error: Os { code: 10048, kind: AddrInUse, message: "Only one usage of each socket address (protocol/network address/port) is normally permitted." }
+error: process didn't exit successfully: `target\release\speedbox.exe` (exit code: 1)

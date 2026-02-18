@@ -1,5 +1,5 @@
 import { type FunctionalComponent } from 'preact';
-import { useState, useCallback } from 'preact/hooks';
+import { useState, useCallback, useRef } from 'preact/hooks';
 import { Gauge } from './Gauge';
 import { Chart } from './Chart';
 import { AdvancedSettings } from './components/AdvancedSettings';
@@ -8,7 +8,7 @@ import { BackendConfig } from './components/BackendConfig';
 import { PairingPanel } from './components/PairingPanel';
 import { useSpeedTestAdapter } from './hooks/useSpeedTestAdapter';
 import { useWebRtcPairing } from './hooks/useWebRtcPairing';
-import { DEFAULT_CONFIG, type SpeedTestConfig, type TestDirection } from './lib/speedtest';
+import { DEFAULT_CONFIG, type SpeedTestConfig, type TestDirection, type TestState } from './lib/speedtest';
 
 export const App: FunctionalComponent = () => {
   const [config, setConfig] = useState<SpeedTestConfig>(DEFAULT_CONFIG);
@@ -34,27 +34,31 @@ export const App: FunctionalComponent = () => {
   const isPaired = isWebRtc && webrtc.pairingState === 'paired';
 
   // For WebRTC: local test state tracked separately
-  const [webrtcState, setWebrtcState] = useState<'idle' | 'downloading' | 'uploading' | 'done' | 'error'>('idle');
+  const [webrtcState, setWebrtcState] = useState<TestState>('idle');
   const [webrtcDownloadSpeed, setWebrtcDownloadSpeed] = useState(0);
   const [webrtcUploadSpeed, setWebrtcUploadSpeed] = useState(0);
   const [webrtcDownloadHistory, setWebrtcDownloadHistory] = useState<{ t: number; v: number }[]>([]);
   const [webrtcUploadHistory, setWebrtcUploadHistory] = useState<{ t: number; v: number }[]>([]);
   const [webrtcError, setWebrtcError] = useState<string | null>(null);
 
-  // Which state/speeds to display
-  const displayState = isWebRtc ? webrtcState : state;
-  const displayDownloadSpeed = isWebRtc ? webrtcDownloadSpeed : downloadSpeed;
-  const displayUploadSpeed = isWebRtc ? webrtcUploadSpeed : uploadSpeed;
-  const displayDownloadHistory = isWebRtc ? webrtcDownloadHistory : downloadHistory;
-  const displayUploadHistory = isWebRtc ? webrtcUploadHistory : uploadHistory;
+  const displayState = isWebRtc
+    ? (webrtc.localPassiveState !== 'idle' ? webrtc.localPassiveState : webrtcState)
+    : state;
+  const displayDownloadSpeed = isWebRtc ? (webrtcDownloadSpeed || webrtc.localDownloadSpeed) : downloadSpeed;
+  const displayUploadSpeed = isWebRtc ? (webrtcUploadSpeed || webrtc.localUploadSpeed) : uploadSpeed;
+  const displayDownloadHistory = isWebRtc ? (webrtcDownloadHistory.length > 0 ? webrtcDownloadHistory : webrtc.localDownloadHistory) : downloadHistory;
+  const displayUploadHistory = isWebRtc ? (webrtcUploadHistory.length > 0 ? webrtcUploadHistory : webrtc.localUploadHistory) : uploadHistory;
   const displayError = isWebRtc ? webrtcError : error;
 
   const isRunning = displayState === 'downloading' || displayState === 'uploading';
-  const isDone = displayState === 'done';
+  const isDone = displayState === 'done' || displayState === 'interrupted';
 
-  const handleWebRtcTest = useCallback(async (direction: TestDirection) => {
-    if (!webrtc.adapter) return;
+  const finalStateRef = useRef<TestState>('idle' as TestState);
+
+  const handleWebRtcTest = useCallback(async (direction: TestDirection, phase: number = 1): Promise<'done' | 'interrupted' | 'error'> => {
+    if (!webrtc.adapter) return 'error';
     setWebrtcError(null);
+    finalStateRef.current = 'idle';
 
     try {
       await webrtc.adapter.start(direction, config, {
@@ -67,17 +71,24 @@ export const App: FunctionalComponent = () => {
             setWebrtcUploadHistory(prev => [...prev, { t: progress.elapsed, v: progress.speedMbps ?? 0 }]);
           }
         },
-        onStateChange: (s) => setWebrtcState(s),
+        onStateChange: (s) => {
+          setWebrtcState(s);
+          finalStateRef.current = s;
+        },
         onError: (e) => setWebrtcError(e),
-      });
+      }, phase);
     } catch (e) {
       setWebrtcError(String(e));
       setWebrtcState('error');
+      return 'error';
     }
+
+    return (finalStateRef.current as TestState) === 'interrupted' ? 'interrupted' : 'done';
   }, [webrtc.adapter, config]);
 
   const handleStartBothWebRtc = useCallback(async () => {
     if (!webrtc.adapter) return;
+    // Clear all history at the start of Phase 1
     setWebrtcDownloadSpeed(0);
     setWebrtcUploadSpeed(0);
     setWebrtcDownloadHistory([]);
@@ -85,12 +96,20 @@ export const App: FunctionalComponent = () => {
     setWebrtcError(null);
     setWebrtcState('downloading');
 
-    await handleWebRtcTest('download');
-    if (webrtcState !== 'error') {
-      await handleWebRtcTest('upload');
+    // Phase 1: Download test (initiator downloads, passive uploads)
+    const phase1Result = await handleWebRtcTest('download', 1);
+    // Only continue to phase 2 if phase 1 completed normally (not interrupted or error)
+    if (phase1Result === 'done') {
+      // Phase 2: Upload test (initiator uploads, passive downloads)
+      const phase2Result = await handleWebRtcTest('upload', 2);
+      // Final state is determined by phase 2 result
+      if (phase2Result === 'done') {
+        setWebrtcState('done');
+      }
+      // If interrupted or error, the state is already set by the adapter
     }
-    setWebrtcState('done');
-  }, [handleWebRtcTest, webrtcState, webrtc.adapter]);
+    // If interrupted or error in phase 1, don't proceed to phase 2
+  }, [handleWebRtcTest, webrtc.adapter]);
 
   const handleStart = (direction: TestDirection) => {
     if (isWebRtc) {
@@ -119,12 +138,19 @@ export const App: FunctionalComponent = () => {
 
   const handleReset = () => {
     if (isWebRtc) {
-      setWebrtcState('idle');
-      setWebrtcDownloadSpeed(0);
-      setWebrtcUploadSpeed(0);
-      setWebrtcDownloadHistory([]);
-      setWebrtcUploadHistory([]);
-      setWebrtcError(null);
+      if (webrtc.adapter && isRunning) {
+        // If test is running, stop it (this will trigger 'interrupted' state via adapter callback)
+        webrtc.adapter.stop();
+      } else {
+        // If not running, just reset the UI state
+        setWebrtcState('idle');
+        setWebrtcDownloadSpeed(0);
+        setWebrtcUploadSpeed(0);
+        setWebrtcDownloadHistory([]);
+        setWebrtcUploadHistory([]);
+        setWebrtcError(null);
+        webrtc.resetPeerState();
+      }
     } else {
       reset();
     }
@@ -134,6 +160,7 @@ export const App: FunctionalComponent = () => {
   if (displayState === 'downloading') stateLabel = 'Downloading...';
   else if (displayState === 'uploading') stateLabel = 'Uploading...';
   else if (displayState === 'done') stateLabel = 'Test Complete';
+  else if (displayState === 'interrupted') stateLabel = 'Test Interrupted';
   else if (displayState === 'error') stateLabel = 'Error';
 
   const canStart = isWebRtc ? isPaired && !isRunning : !isRunning;
@@ -162,6 +189,8 @@ export const App: FunctionalComponent = () => {
           onAcceptPair={webrtc.acceptPair}
           onRejectPair={webrtc.rejectPair}
           onUnpair={webrtc.unpair}
+          deviceName={webrtc.deviceName}
+          getDebugInfo={webrtc.adapter?.getDebugInfo.bind(webrtc.adapter)}
           disabled={isRunning}
         />
       )}
