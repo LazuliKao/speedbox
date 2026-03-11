@@ -80,6 +80,7 @@ export class WebRtcAdapter implements SpeedTestAdapter {
   private receiveStartTime: number = 0;
   private receiveTotalBytes: number = 0;
   private receiveLastUpdate: number = 0;
+  private receiveStopped: boolean = false;
   
   // Event callbacks
   private events: WebRtcEvents;
@@ -175,9 +176,7 @@ export class WebRtcAdapter implements SpeedTestAdapter {
     
     switch (cmd) {
       case 'HELLO_OK': {
-        // Server assigned us an ID: HELLO_OK <id>
-        const serverId = payload;
-        this.log('Server assigned ID:', serverId);
+        this.log('Server accepted HELLO');
         this.setPairingState('lobby');
         break;
       }
@@ -429,13 +428,15 @@ export class WebRtcAdapter implements SpeedTestAdapter {
     if (data === 'START') {
       this.receiveStartTime = performance.now();
       this.receiveTotalBytes = 0;
-      this.receiveLastUpdate = 0;
+      this.receiveLastUpdate = performance.now();
+      this.receiveStopped = false;
       this.log('Receive START - reset counters');
       return;
     }
     
     if (data === 'STOP') {
       this.log('Receive STOP');
+      this.receiveStopped = true;
       return;
     }
     
@@ -715,14 +716,16 @@ export class WebRtcAdapter implements SpeedTestAdapter {
             return;
           }
           
-          if (dc.bufferedAmount > chunkSize * 2) {
-            // Wait for buffer to drain
-            setTimeout(send, 10);
-            return;
+          // Fill buffer aggressively up to 1MB
+          const targetBuffer = 1024 * 1024;
+          while (dc.bufferedAmount < targetBuffer) {
+            // Re-check conditions inside loop
+            if (signal.aborted || performance.now() - startTime >= durationMs) {
+              break;
+            }
+            dc.send(buffer);
+            totalBytes += chunkSize;
           }
-          
-          dc.send(buffer);
-          totalBytes += chunkSize;
           
           const now = performance.now();
           if (now - lastUpdate >= 500) {
@@ -745,12 +748,8 @@ export class WebRtcAdapter implements SpeedTestAdapter {
             lastUpdate = now;
           }
           
-          // Use setImmediate-like scheduling for better throughput
-          if (typeof requestAnimationFrame !== 'undefined') {
-            requestAnimationFrame(send);
-          } else {
-            setTimeout(send, 0);
-          }
+          // Check again shortly
+          setTimeout(send, 5);
         };
         
         send();
@@ -778,7 +777,8 @@ export class WebRtcAdapter implements SpeedTestAdapter {
     // Reset receive state
     this.receiveStartTime = performance.now();
     this.receiveTotalBytes = 0;
-    this.receiveLastUpdate = 0;
+    this.receiveLastUpdate = performance.now();
+    this.receiveStopped = false;
     
     // Wait for test to complete or abort
     return new Promise((resolve) => {
@@ -793,6 +793,12 @@ export class WebRtcAdapter implements SpeedTestAdapter {
         const elapsed = (performance.now() - this.receiveStartTime) / 1000;
         if (elapsed > config.duration + 5) {
           this.log('runReceiver: timeout');
+          resolve();
+          return;
+        }
+
+        if (this.receiveStopped) {
+          this.log('runReceiver: stopped by peer');
           resolve();
           return;
         }
@@ -823,6 +829,7 @@ export class WebRtcAdapter implements SpeedTestAdapter {
     this.receiveTotalBytes = 0;
     this.receiveStartTime = 0;
     this.receiveLastUpdate = 0;
+    this.receiveStopped = false;
     this.testCallbacks = null;
   }
   

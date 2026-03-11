@@ -5,7 +5,7 @@ export interface GaugeProps {
   max?: number;
   label?: string;
   size?: number;
-  active?: boolean;
+  color?: string;
 }
 
 export const Gauge: FunctionalComponent<GaugeProps> = ({
@@ -14,6 +14,7 @@ export const Gauge: FunctionalComponent<GaugeProps> = ({
   label = 'Mbps',
   size = 200,
   active = false,
+  color,
 }) => {
   const r = 80;
   const cx = 100;
@@ -22,12 +23,13 @@ export const Gauge: FunctionalComponent<GaugeProps> = ({
   const pct = Math.min(value / max, 1);
   const offset = circumference * (1 - pct);
 
-  const valueColor =
+  const valueColor = color || (
     pct > 0.8
       ? 'var(--colorStatusSuccessForeground1)'
       : pct > 0.4
         ? 'var(--colorStatusWarningForeground1)'
-        : 'var(--colorCompoundBrandStroke)';
+        : 'var(--colorCompoundBrandStroke)'
+  );
 
   return (
     <svg

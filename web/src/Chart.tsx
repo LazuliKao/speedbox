@@ -6,6 +6,7 @@ export interface ChartProps {
   width?: number;
   height?: number;
   color?: string;
+  max?: number;
 }
 
 export const Chart: FunctionalComponent<ChartProps> = ({
@@ -13,10 +14,13 @@ export const Chart: FunctionalComponent<ChartProps> = ({
   width = 300,
   height = 80,
   color = '#2196f3',
+  max,
 }) => {
   if (data.length < 2) return null;
 
-  const maxV = Math.max(...data.map((d) => d.v), 1);
+  const dataMax = Math.max(...data.map((d) => d.v), 1);
+  const maxV = max && max > dataMax ? max : dataMax;
+  
   const points = data
     .map((d, i) => {
       const x = (i / (data.length - 1)) * width;

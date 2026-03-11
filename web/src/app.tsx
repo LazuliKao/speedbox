@@ -207,16 +207,20 @@ export const App: FunctionalComponent = () => {
             value={displayDownloadSpeed}
             label={isPaired ? 'Download (You)' : 'Download'}
             active={displayState === 'downloading'}
+            color="var(--colorCompoundBrandStroke)"
+            max={1000}
           />
-          <Chart data={displayDownloadHistory} color="var(--colorCompoundBrandStroke)" />
+          <Chart data={displayDownloadHistory} color="var(--colorCompoundBrandStroke)" max={1000} />
         </div>
         <div class="gauge-group">
           <Gauge
             value={displayUploadSpeed}
             label={isPaired ? 'Upload (You)' : 'Upload'}
             active={displayState === 'uploading'}
+            color="var(--colorStatusSuccessForeground1)"
+            max={1000}
           />
-          <Chart data={displayUploadHistory} color="var(--colorStatusSuccessForeground1)" />
+          <Chart data={displayUploadHistory} color="var(--colorStatusSuccessForeground1)" max={1000} />
         </div>
       </div>
 
@@ -227,16 +231,20 @@ export const App: FunctionalComponent = () => {
               value={webrtc.peerDownloadSpeed}
               label={`Download (${webrtc.partnerName})`}
               active={webrtc.peerTestState === 'downloading'}
+              color="var(--colorCompoundBrandStroke)"
+              max={1000}
             />
-            <Chart data={webrtc.peerDownloadHistory} color="var(--colorCompoundBrandStroke)" />
+            <Chart data={webrtc.peerDownloadHistory} color="var(--colorCompoundBrandStroke)" max={1000} />
           </div>
           <div class="gauge-group">
             <Gauge
               value={webrtc.peerUploadSpeed}
               label={`Upload (${webrtc.partnerName})`}
               active={webrtc.peerTestState === 'uploading'}
+              color="var(--colorStatusSuccessForeground1)"
+              max={1000}
             />
-            <Chart data={webrtc.peerUploadHistory} color="var(--colorStatusSuccessForeground1)" />
+            <Chart data={webrtc.peerUploadHistory} color="var(--colorStatusSuccessForeground1)" max={1000} />
           </div>
         </div>
       )}
