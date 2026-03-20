@@ -1,3 +1,22 @@
+/**
+ * WebRTC Speed Test Adapter.
+ *
+ * Protocol (matches backend src/protocol/signaling.rs for signaling):
+ *   1. Connect to signaling server at ws://host/ws/signal.
+ *   2. Send HELLO with device ID/Name to authenticate and join lobby.
+ *   3. Discover nearby peers via LOBBY updates from signaling server.
+ *   4. Initiate Pair Request to target peer and wait for PAIR_ACCEPT, or accept incoming requests.
+ *   5. Setup RTCPeerConnection and exchange SDP offers/answers and ICE candidates via SIGNAL messages.
+ *   6. Establish a single RTCDataChannel ('speedtest') between the paired peers.
+ *
+ * Test Execution (Data Channel):
+ *   - Initiator sends 'TEST_START' (with config) via signaling to sync the test state.
+ *   - Sender peer fires a 'START' string over the data channel to reset progress on the receiver.
+ *   - Sender aggressively floods the data channel with continuous binary buffer chunks.
+ *   - Receiver accumulates bytes, measures throughput, and periodically sends back 'TEST_UPDATE' stats over signaling.
+ *   - On duration end or stop request, the sender sends a 'STOP' message over the data channel.
+ */
+
 import type { SpeedTestAdapter, SpeedTestConfig, SpeedTestCallbacks, TestDirection } from '../speedtest';
 
 // ============================================================================

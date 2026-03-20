@@ -16,8 +16,7 @@ impl Config {
             .ok()
             .and_then(|v| v.parse().ok())
             .unwrap_or(8080);
-        let bind_addr =
-            std::env::var("SPEEDBOX_BIND").unwrap_or_else(|_| "0.0.0.0".to_string());
+        let bind_addr = std::env::var("SPEEDBOX_BIND").unwrap_or_else(|_| "0.0.0.0".to_string());
         Self { port, bind_addr }
     }
 }

@@ -23,7 +23,11 @@ fn empty() -> BoxBody {
 fn parse_query_param<'a>(query: &'a str, key: &str) -> Option<&'a str> {
     query.split('&').find_map(|pair| {
         let (k, v) = pair.split_once('=')?;
-        if k == key { Some(v) } else { None }
+        if k == key {
+            Some(v)
+        } else {
+            None
+        }
     })
 }
 
@@ -132,8 +136,14 @@ mod tests {
 
     #[test]
     fn parse_query_param_works() {
-        assert_eq!(parse_query_param("chunk_size=1024&foo=bar", "chunk_size"), Some("1024"));
-        assert_eq!(parse_query_param("chunk_size=1024&foo=bar", "foo"), Some("bar"));
+        assert_eq!(
+            parse_query_param("chunk_size=1024&foo=bar", "chunk_size"),
+            Some("1024")
+        );
+        assert_eq!(
+            parse_query_param("chunk_size=1024&foo=bar", "foo"),
+            Some("bar")
+        );
         assert_eq!(parse_query_param("chunk_size=1024", "missing"), None);
         assert_eq!(parse_query_param("", "chunk_size"), None);
     }

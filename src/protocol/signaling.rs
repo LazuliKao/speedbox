@@ -178,22 +178,10 @@ async fn handle_message(
                 },
             );
 
-            send(ws, "HELLO_OK").await?;
-
-            let lobby_json = build_lobby_json(&lob, &id);
-            send(ws, &format!("LOBBY {lobby_json}")).await?;
-
-            let join_msg = format!(
-                "PEER_JOINED {{\"id\":\"{id}\",\"name\":{},\"paired\":false}}",
-                json_str(&name)
-            );
-            for (pid, peer) in lob.iter() {
-                if pid != &id {
-                    let _ = peer.tx.send(join_msg.clone());
-                }
-            }
-
             *my_id = Some(id);
+
+            send(ws, "HELLO_OK").await?;
+            broadcast_lobby(&lob);
         }
 
         "PAIR_REQUEST" => {
@@ -247,16 +235,18 @@ async fn handle_message(
                     target.paired_with = Some(sender_id.to_owned());
                     target.pending_pair_from = None;
 
-            let sender = lob.get(sender_id).unwrap();
-            let target = lob.get(target_id).unwrap();
-            let sender_name = sender.name.clone();
-            let target_name = target.name.clone();
-            let _ = sender
-                .tx
-                .send(format!("PAIRED {}", json_payload(target_id, &target_name)));
-            let _ = target
-                .tx
-                .send(format!("PAIRED {}", json_payload(sender_id, &sender_name)));
+                    let sender = lob.get(sender_id).unwrap();
+                    let target = lob.get(target_id).unwrap();
+                    let sender_name = sender.name.clone();
+                    let target_name = target.name.clone();
+                    let _ = sender
+                        .tx
+                        .send(format!("PAIRED {}", json_payload(target_id, &target_name)));
+                    let _ = target
+                        .tx
+                        .send(format!("PAIRED {}", json_payload(sender_id, &sender_name)));
+
+                    broadcast_lobby(&lob);
                     return Ok(());
                 }
             }
@@ -316,12 +306,15 @@ async fn handle_message(
             let requester = lob.get(requester_id).unwrap();
             let my_name = me.name.clone();
             let requester_name = requester.name.clone();
-            let _ = me
-                .tx
-                .send(format!("PAIRED {}", json_payload(requester_id, &requester_name)));
+            let _ = me.tx.send(format!(
+                "PAIRED {}",
+                json_payload(requester_id, &requester_name)
+            ));
             let _ = requester
                 .tx
                 .send(format!("PAIRED {}", json_payload(my, &my_name)));
+
+            broadcast_lobby(&lob);
         }
 
         "PAIR_REJECT" => {
@@ -351,7 +344,9 @@ async fn handle_message(
             };
 
             let mut lob = lobby().write().await;
-            unpair_peer(&mut lob, my);
+            if unpair_peer(&mut lob, my) {
+                broadcast_lobby(&lob);
+            }
         }
 
         "SIGNAL" => {
@@ -403,18 +398,26 @@ async fn handle_message(
 
 /// Relay a message to the paired partner (if any).
 async fn relay_to_partner(my_id: &Option<String>, msg: &str) {
-    let Some(my) = my_id.as_ref() else { 
+    let Some(my) = my_id.as_ref() else {
         println!("[relay_to_partner] No my_id, returning");
-        return; 
+        return;
     };
     let lob = lobby().read().await;
     if let Some(me) = lob.get(my) {
         if let Some(partner_id) = &me.paired_with {
             if let Some(partner) = lob.get(partner_id) {
-                println!("[relay_to_partner] {} -> {}: {}", my, partner_id, msg.split_whitespace().next().unwrap_or(msg));
+                println!(
+                    "[relay_to_partner] {} -> {}: {}",
+                    my,
+                    partner_id,
+                    msg.split_whitespace().next().unwrap_or(msg)
+                );
                 let _ = partner.tx.send(msg.to_owned());
             } else {
-                println!("[relay_to_partner] Partner {} not found in lobby", partner_id);
+                println!(
+                    "[relay_to_partner] Partner {} not found in lobby",
+                    partner_id
+                );
             }
         } else {
             println!("[relay_to_partner] {} has no paired_with", my);
@@ -442,10 +445,12 @@ async fn peer_disconnect(id: &str) {
     for (_, peer) in lob.iter() {
         let _ = peer.tx.send(leave_msg.clone());
     }
+
+    broadcast_lobby(&lob);
 }
 
 /// Unpair a peer and its partner. Notifies both.
-fn unpair_peer(lob: &mut HashMap<String, LobbyPeer>, id: &str) {
+fn unpair_peer(lob: &mut HashMap<String, LobbyPeer>, id: &str) -> bool {
     let partner_id = lob.get(id).and_then(|p| p.paired_with.clone());
 
     if let Some(partner_id) = partner_id {
@@ -457,6 +462,9 @@ fn unpair_peer(lob: &mut HashMap<String, LobbyPeer>, id: &str) {
             me.paired_with = None;
             let _ = me.tx.send("UNPAIRED".to_owned());
         }
+        true
+    } else {
+        false
     }
 }
 
@@ -486,6 +494,13 @@ fn json_str(s: &str) -> String {
         .replace('\r', "\\r")
         .replace('\t', "\\t");
     format!("\"{escaped}\"")
+}
+
+fn broadcast_lobby(lob: &HashMap<String, LobbyPeer>) {
+    for (pid, peer) in lob.iter() {
+        let lobby_json = build_lobby_json(lob, pid);
+        let _ = peer.tx.send(format!("LOBBY {lobby_json}"));
+    }
 }
 
 fn json_payload(id: &str, name: &str) -> String {
@@ -537,9 +552,9 @@ async fn send(
     ws: &mut fastwebsockets::WebSocket<hyper_util::rt::TokioIo<hyper::upgrade::Upgraded>>,
     msg: &str,
 ) -> Result<(), WebSocketError> {
-    ws.write_frame(Frame::text(
-        fastwebsockets::Payload::Borrowed(msg.as_bytes()),
-    ))
+    ws.write_frame(Frame::text(fastwebsockets::Payload::Borrowed(
+        msg.as_bytes(),
+    )))
     .await
 }
 
