@@ -1,0 +1,5 @@
+.git
+.gitignore
+target
+web/node_modules
+package/luci-app-speedbox/root/www/speedbox/assets
