@@ -150,7 +150,7 @@ async fn test_download_endpoint() {
     // Read a chunk then abort (body is infinite)
     let chunk = resp.chunk().await.unwrap();
     assert!(chunk.is_some());
-    assert!(chunk.unwrap().len() > 0);
+    assert!(!chunk.unwrap().is_empty());
 }
 
 #[tokio::test]
@@ -270,12 +270,9 @@ mod ws_tests {
 
         let response = timeout(Duration::from_secs(1), async {
             loop {
-                let Some((opcode, payload)) = read_ws_frame(stream).await else {
-                    return None;
-                };
-                match opcode {
-                    0x1 => return Some(String::from_utf8(payload).unwrap()),
-                    _ => {}
+                let (opcode, payload) = read_ws_frame(stream).await?;
+                if opcode == 0x1 {
+                    return Some(String::from_utf8(payload).unwrap());
                 }
             }
         })
@@ -303,9 +300,7 @@ mod signaling_tests {
 
         let hello = timeout(Duration::from_secs(1), async {
             loop {
-                let Some((opcode, payload)) = read_ws_frame(stream).await else {
-                    return None;
-                };
+                let (opcode, payload) = read_ws_frame(stream).await?;
                 if opcode == 0x1 {
                     return Some(String::from_utf8(payload).unwrap());
                 }
@@ -318,9 +313,7 @@ mod signaling_tests {
 
         let lobby = timeout(Duration::from_secs(1), async {
             loop {
-                let Some((opcode, payload)) = read_ws_frame(stream).await else {
-                    return None;
-                };
+                let (opcode, payload) = read_ws_frame(stream).await?;
                 if opcode == 0x1 {
                     let text = String::from_utf8(payload).unwrap();
                     if text.starts_with("LOBBY ") {
