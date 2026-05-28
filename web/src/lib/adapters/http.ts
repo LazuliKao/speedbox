@@ -215,7 +215,7 @@ export class HttpAdapter implements SpeedTestAdapter {
   ): Promise<void> {
     return new Promise((resolve, reject) => {
       let totalUploaded = 0;
-      const blob = new Blob([randomPayload(packetSize) as any]);
+      const blob = new Blob([randomPayload(packetSize) as BlobPart]);
 
       const uploadNext = () => {
         if (ac.signal.aborted) {

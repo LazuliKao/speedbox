@@ -75,20 +75,19 @@ export const App: FunctionalComponent = () => {
           setWebrtcState(s);
           finalStateRef.current = s;
         },
-        onError: (e) => setWebrtcError(e),
+        onError: (e) => setWebrtcError(String(e)),
       }, phase);
     } catch (e) {
-      setWebrtcError(String(e));
+      setWebrtcError(e instanceof Error ? e.message : String(e));
       setWebrtcState('error');
       return 'error';
     }
 
-    return (finalStateRef.current as TestState) === 'interrupted' ? 'interrupted' : 'done';
+    return 'done';
   }, [webrtc.adapter, config]);
 
   const handleStartBothWebRtc = useCallback(async () => {
     if (!webrtc.adapter) return;
-    // Clear all history at the start of Phase 1
     setWebrtcDownloadSpeed(0);
     setWebrtcUploadSpeed(0);
     setWebrtcDownloadHistory([]);
@@ -96,19 +95,13 @@ export const App: FunctionalComponent = () => {
     setWebrtcError(null);
     setWebrtcState('downloading');
 
-    // Phase 1: Download test (initiator downloads, passive uploads)
     const phase1Result = await handleWebRtcTest('download', 1);
-    // Only continue to phase 2 if phase 1 completed normally (not interrupted or error)
     if (phase1Result === 'done') {
-      // Phase 2: Upload test (initiator uploads, passive downloads)
       const phase2Result = await handleWebRtcTest('upload', 2);
-      // Final state is determined by phase 2 result
       if (phase2Result === 'done') {
         setWebrtcState('done');
       }
-      // If interrupted or error, the state is already set by the adapter
     }
-    // If interrupted or error in phase 1, don't proceed to phase 2
   }, [handleWebRtcTest, webrtc.adapter]);
 
   const handleStart = (direction: TestDirection) => {

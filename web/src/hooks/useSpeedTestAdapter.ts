@@ -107,10 +107,10 @@ export function useSpeedTestAdapter() {
         await runSingleTest(direction);
       }
 
-    } catch (e: any) {
-      setError(e.message || 'Failed to start test');
-      setState('error');
-    }
+  } catch (e: unknown) {
+    setError(e instanceof Error ? e.message : 'Failed to start test');
+    setState('error');
+  }
   }, [reset]);
 
   // cleanup on unmount

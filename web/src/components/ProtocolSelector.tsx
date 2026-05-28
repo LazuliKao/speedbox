@@ -20,12 +20,12 @@ export const ProtocolSelector: FunctionalComponent<ProtocolSelectorProps> = ({
   useEffect(() => {
     fetch(`${apiBase()}/info`)
       .then((res) => res.json())
-      .then((data) => {
-        if (data && Array.isArray(data.features)) {
-          setFeatures(data.features);
+      .then((data: unknown) => {
+        if (data && typeof data === 'object' && 'features' in data && Array.isArray(data.features)) {
+          setFeatures(data.features.filter((f: unknown) => typeof f === 'string'));
         }
       })
-      .catch((err) => console.error('Failed to fetch capabilities', err));
+      .catch((err) => console.error('Failed to fetch server capabilities:', err));
   }, []);
 
   const protocols: { id: Protocol; label: string }[] = [

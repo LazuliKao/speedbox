@@ -13,14 +13,14 @@ export const Chart: FunctionalComponent<ChartProps> = ({
   data = [],
   width = 300,
   height = 80,
-  color = '#2196f3',
+  color = 'var(--colorCompoundBrandStroke)',
   max,
 }) => {
   if (data.length < 2) return null;
 
   const dataMax = Math.max(...data.map((d) => d.v), 1);
   const maxV = max && max > dataMax ? max : dataMax;
-  
+
   const points = data
     .map((d, i) => {
       const x = (i / (data.length - 1)) * width;

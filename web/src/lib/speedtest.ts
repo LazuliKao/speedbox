@@ -1,3 +1,10 @@
+declare global {
+  interface Window {
+    SPEEDBOX_API_BASE?: string;
+  }
+}
+
+
 /**
  * SpeedTestAdapter — unified interface for all speed test protocols.
  *
@@ -120,7 +127,7 @@ export function apiBase(): string {
   const stored = localStorage.getItem(STORAGE_KEY);
   if (stored) return normalize(stored);
   
-  const globalBase = (window as any).SPEEDBOX_API_BASE;
+  const globalBase = window.SPEEDBOX_API_BASE;
   if (globalBase) return normalize(globalBase);
   
   return '';
@@ -131,7 +138,7 @@ export function setApiBase(base: string): void {
   const normalized = normalize(base);
   persist(normalized);
   if (typeof window !== 'undefined') {
-    (window as any).SPEEDBOX_API_BASE = normalized || undefined;
+    window.SPEEDBOX_API_BASE = normalized || undefined;
   }
 }
 
@@ -139,7 +146,7 @@ export function setApiBase(base: string): void {
 export function clearApiBase(): void {
   localStorage.removeItem(STORAGE_KEY);
   if (typeof window !== 'undefined') {
-    delete (window as any).SPEEDBOX_API_BASE;
+    delete window.SPEEDBOX_API_BASE;
   }
 }
 

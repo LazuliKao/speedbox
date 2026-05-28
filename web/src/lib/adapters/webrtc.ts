@@ -18,6 +18,7 @@
  */
 
 import type { SpeedTestAdapter, SpeedTestConfig, SpeedTestCallbacks, TestDirection } from '../speedtest';
+import { calcSpeedMbps } from '../speedtest';
 
 // ============================================================================
 // Types
@@ -54,10 +55,6 @@ export interface WebRtcEvents {
 // Helper Functions
 // ============================================================================
 
-function calcSpeedMbps(bytes: number, elapsedSec: number): number {
-  if (elapsedSec <= 0) return 0;
-  return (bytes * 8) / (elapsedSec * 1_000_000);
-}
 
 function generateId(): string {
   return Math.random().toString(36).substring(2, 15);
@@ -877,7 +874,7 @@ export class WebRtcAdapter implements SpeedTestAdapter {
     };
   }
   
-  private log(...args: any[]) {
+  private log(...args: unknown[]) {
     const time = new Date().toISOString().substring(11, 23);
     const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a).substring(0, 200) : a).join(' ');
     this.messageLog.push({ time, dir: 'in', cmd: 'log', payload: msg });

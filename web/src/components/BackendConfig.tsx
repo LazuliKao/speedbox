@@ -1,19 +1,20 @@
-import { FunctionalComponent } from 'preact';
+import { type FunctionalComponent } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
 import { apiBase, setApiBase, clearApiBase } from '../lib/index';
 
-interface Props {
+interface BackendConfigProps {
   disabled?: boolean;
 }
 
-export const BackendConfig: FunctionalComponent<Props> = ({ disabled }) => {
+export const BackendConfig: FunctionalComponent<BackendConfigProps> = ({ disabled }) => {
   const [currentBase, setCurrentBase] = useState('');
   const [inputValue, setInputValue] = useState('');
   const [editing, setEditing] = useState(false);
 
   useEffect(() => {
-    setCurrentBase(apiBase());
-    setInputValue(apiBase());
+    const base = apiBase();
+    setCurrentBase(base);
+    setInputValue(base);
   }, []);
 
   const handleSave = () => {

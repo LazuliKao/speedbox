@@ -17,7 +17,7 @@ return view.extend({
 				_('Embedded speed test frontend.  Backend runs on port %s.').format(port)),
 			E('iframe', {
 				'id': 'speedbox-frame',
-				'src': '/speedbox/index.html',
+			'src': '/speedbox/index.html?api=' + encodeURIComponent('http://' + location.hostname + ':' + port),
 				'style': 'width:100%;height:600px;border:none;border-radius:8px;background:#f5f5f5;',
 				'allow': 'fullscreen',
 			}),

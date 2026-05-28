@@ -102,9 +102,8 @@ export function useWebRtcPairing(): UseWebRtcPairingReturn {
   const handlePeerTestStart = useCallback((config: SpeedTestConfig & { initiatorDirection: TestDirection; phase: number }) => {
     const remoteDirection = config.initiatorDirection;
     const phase = config.phase ?? 1;
-    console.log('[handlePeerTestStart] Received TEST_START, direction:', remoteDirection, 'phase:', phase);
     setPeerTestState(remoteDirection === 'download' ? 'downloading' : 'uploading');
-    
+
     if (phase === 1) {
       setPeerDownloadSpeed(0);
       setPeerUploadSpeed(0);
@@ -115,9 +114,9 @@ export function useWebRtcPairing(): UseWebRtcPairingReturn {
       setLocalDownloadHistory([]);
       setLocalUploadHistory([]);
     }
-    
+
     const localDirection = remoteDirection === 'download' ? 'upload' : 'download';
-    
+
     if (adapterRef.current) {
       adapterRef.current.startRemote(localDirection, config, {
         onProgress: (dir, progress) => {

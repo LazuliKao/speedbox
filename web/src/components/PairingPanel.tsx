@@ -70,9 +70,9 @@ export const PairingPanel: FunctionalComponent<PairingPanelProps> = ({
     setPendingId(id);
     onRequestPair(id);
   };
-  
-  if (pairingState !== 'pending' && pendingId) {
-      setPendingId(null);
+
+  if (pairingState !== 'pending') {
+    setPendingId(null);
   }
 
   let content;

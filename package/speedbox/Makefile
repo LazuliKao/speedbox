@@ -44,5 +44,9 @@ define Package/speedbox/install
 	$(INSTALL_CONF) ./files/speedbox.config $(1)/etc/config/speedbox
 endef
 
+define Package/speedbox/conffiles
+/etc/config/speedbox
+endef
+
 $(eval $(call RustBinPackage,speedbox))
 $(eval $(call BuildPackage,speedbox))

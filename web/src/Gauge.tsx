@@ -5,6 +5,7 @@ export interface GaugeProps {
   max?: number;
   label?: string;
   size?: number;
+  active?: boolean;
   color?: string;
 }
 

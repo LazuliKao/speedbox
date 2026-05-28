@@ -30,6 +30,7 @@ export default defineConfig({
       },
     }),
   ],
+  base: './',
   build: {
     outDir: resolve(__dirname, '../package/luci-app-speedbox/root/www/speedbox'),
     emptyOutDir: true,
