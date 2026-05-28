@@ -1,9 +1,11 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
+#[cfg(feature = "ws")]
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::net::TcpListener;
 use tokio::task::JoinHandle;
+#[cfg(any(feature = "ws", feature = "webrtc"))]
 use tokio::time::{sleep, timeout};
 
 /// Start the speedbox server on a random port and return the address and handle.
@@ -50,6 +52,7 @@ fn short_timeout_client() -> reqwest::Client {
         .unwrap()
 }
 
+#[cfg(feature = "ws")]
 async fn write_ws_frame<S>(stream: &mut S, opcode: u8, payload: &[u8])
 where
     S: AsyncWrite + Unpin,
@@ -82,6 +85,7 @@ where
     stream.flush().await.unwrap();
 }
 
+#[cfg(feature = "ws")]
 async fn read_ws_frame<S>(stream: &mut S) -> Option<(u8, Vec<u8>)>
 where
     S: AsyncRead + Unpin,

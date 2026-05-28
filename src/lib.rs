@@ -7,10 +7,12 @@ use std::sync::Arc;
 
 use bytes::Bytes;
 use http_body_util::combinators::BoxBody;
+#[cfg(any(feature = "ws", feature = "webrtc"))]
 use http_body_util::{BodyExt, Full};
 use hyper::body::Incoming;
 use hyper::Request;
 use hyper::Response;
+#[cfg(any(feature = "ws", feature = "webrtc"))]
 use hyper::StatusCode;
 
 /// Route a request to the appropriate protocol handler.
